@@ -13,18 +13,12 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 import dj_database_url
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-c8aetlj(=vp90n@#yoc^&d(_6ivp(d!bv-4-f!r$lawptjzrwu')
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-c8aetlj(=vp90n@#yoc^&d(_6ivp(d!bv-4-f!r$lawptjzrwu'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['.vercel.app', 'localhost', '127.0.0.1']
 
@@ -44,6 +38,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -90,7 +85,8 @@ DATABASES = {
     }
 }
 
-DATABASES['default'] = dj_database_url.parse('postgresql://django_bookmyshow_nrpj_user:mX2JtOpVo7qZH4cAjr28F9o2LLtJUBzU@dpg-d9n1g9h42hec73enc9pg-a.singapore-postgres.render.com/django_bookmyshow_nrpj')
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://django_bookmyshow_nrpj_user:mX2JtOpVo7qZH4cAjr28F9o2LLtJUBzU@dpg-d9n1g9h42hec73enc9pg-a.singapore-postgres.render.com/django_bookmyshow_nrpj')
+DATABASES['default'] = dj_database_url.parse(DATABASE_URL)
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -127,6 +123,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = []
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

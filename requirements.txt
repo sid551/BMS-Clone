@@ -6,3 +6,4 @@ psycopg2-binary
 sqlparse==0.4.4
 typing_extensions==4.7.0
 Pillow
+whitenoise==6.7.0

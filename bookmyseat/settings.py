@@ -89,8 +89,8 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-# Remote PostgreSQL (commented out - using local SQLite instead)
-# DATABASES['default'] = dj_database_url.parse('postgresql://django_bookmyshow_user:uF7eu2GnnDbqvUgYswCYpIS5TKTtsAUS@dpg-cshi84o8fa8c739dsme0-a.oregon-postgres.render.com/django_bookmyshow')
+
+DATABASES['default'] = dj_database_url.parse('postgresql://django_bookmyshow_nrpj_user:mX2JtOpVo7qZH4cAjr28F9o2LLtJUBzU@dpg-d9n1g9h42hec73enc9pg-a.singapore-postgres.render.com/django_bookmyshow_nrpj')
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

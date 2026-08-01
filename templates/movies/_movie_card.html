@@ -1,0 +1,50 @@
+{% load movie_tags %}
+<div class="col-6 col-md-3 col-lg-2 mb-4">
+  <a
+    href="{% url 'movie_detail' m.id %}"
+    class="text-decoration-none text-dark"
+  >
+    <div class="card h-100 shadow-sm movie-card">
+      {% if m.poster and m.poster.name %}
+      <img
+        src="{{ m.poster.url }}"
+        class="card-img-top"
+        alt="{{ m.title }}"
+        style="height: 200px; object-fit: cover"
+      />
+      {% elif m.image and m.image.name %}
+      <img
+        src="{{ m.image.url }}"
+        class="card-img-top"
+        alt="{{ m.title }}"
+        style="height: 200px; object-fit: cover"
+      />
+      {% else %}
+      <img
+        src="https://placehold.co/200x200?text={{ m.title|urlencode }}"
+        class="card-img-top"
+        alt="{{ m.title }}"
+        style="height: 200px; object-fit: cover"
+      />
+      {% endif %}
+      <div class="card-body p-2">
+        <p class="mb-1 font-weight-bold small" style="line-height: 1.2">
+          {{ m.title }}
+        </p>
+        <p class="mb-1">
+          <span class="text-warning" style="font-size: 12px">&#9733;</span>
+          <small class="text-muted">{{ m.rating }}</small>
+        </p>
+        {% if m.release_date %}
+        <p class="mb-1">
+          <small class="text-muted">{{ m.release_date|date:"M Y" }}</small>
+        </p>
+        {% endif %} {% for g in m.genres.all|slice:":2" %}
+        <span class="badge badge-light border" style="font-size: 10px"
+          >{{ g.name }}</span
+        >
+        {% endfor %}
+      </div>
+    </div>
+  </a>
+</div>

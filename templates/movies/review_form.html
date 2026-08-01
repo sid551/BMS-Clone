@@ -1,0 +1,28 @@
+{% extends "users/basic.html" %}
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-7">
+      <h4>{{ action }} Review - {{ movie.title }}</h4>
+      <hr>
+      {% for message in messages %}
+      <div class="alert alert-danger">{{ message }}</div>
+      {% endfor %}
+      <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="form-group">
+          <label>{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+          <small class="text-danger">{{ field.errors.0 }}</small>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">Submit Review</button>
+        <a href="{% url 'movie_detail' movie.id %}" class="btn btn-outline-secondary ml-2">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

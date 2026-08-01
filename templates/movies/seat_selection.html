@@ -1,0 +1,107 @@
+{% extends "users/basic.html" %}
+{% block content %}
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+
+      {% if error %}
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Booking Failed.</strong> {{ error }}
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+      </div>
+      {% endif %}
+
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+              <h4 class="card-title">{{ theaters.movie.name }}</h4>
+              <p class="card-text text-muted">
+                {{ theaters.name }}
+                {% if schedule %}| {{ schedule.show_time|date:"M d, Y h:i A" }}{% elif theaters.time %}| {{ theaters.time|date:"M d, Y h:i A" }}{% endif %}
+              </p>
+            </div>
+            <div class="mt-2 mt-sm-0">
+              {% if schedule %}
+              <span class="badge badge-info mr-2">&#8377;{{ schedule.price }} per seat</span>
+              <span class="badge {% if schedule.available_seats > 10 %}badge-success{% elif schedule.available_seats > 0 %}badge-warning{% else %}badge-danger{% endif %}">
+                {{ schedule.available_seats }} seat{{ schedule.available_seats|pluralize }} available
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title text-center mb-4">Select Your Seats</h5>
+          <div class="screen">All eyes this way please!</div>
+
+          <form method="POST">
+            {% csrf_token %}
+            <div class="d-flex justify-content-center flex-wrap mb-4">
+              {% for seat in seats %}
+              <div class="seat {% if seat.is_booked %}sold{% endif %}">
+                {% if not seat.is_booked %}
+                <input type="checkbox" name="seats" value="{{ seat.id }}" class="d-none" id="seat-{{ seat.id }}">
+                <label for="seat-{{ seat.id }}" class="w-100 h-100 d-flex align-items-center justify-content-center">{{ seat.seat_number }}</label>
+                {% else %}
+                {{ seat.seat_number }}
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+
+            <div class="d-flex justify-content-center mb-4">
+              <div class="d-flex align-items-center mr-4">
+                <div class="seat" style="background-color:white"></div>
+                <span class="ml-2">Available</span>
+              </div>
+              <div class="d-flex align-items-center mr-4">
+                <div class="seat selected"></div>
+                <span class="ml-2">Selected</span>
+              </div>
+              <div class="d-flex align-items-center">
+                <div class="seat sold"></div>
+                <span class="ml-2">Sold</span>
+              </div>
+            </div>
+
+            <div class="text-center">
+              {% if schedule and schedule.available_seats == 0 %}
+              <p class="text-danger font-weight-bold">This show is housefull.</p>
+              {% else %}
+              <button type="submit" class="btn btn-success btn-lg">Book Selected Seats</button>
+              {% endif %}
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<style>
+  .seat { width:30px;height:30px;border:1px solid #28a745;margin:3px;text-align:center;line-height:30px;cursor:pointer;border-radius:5px;transition:background-color 0.3s,color 0.3s; }
+  .seat:hover { background-color:#28a745;color:white; }
+  .seat.selected { background-color:#28a745;color:white; }
+  .seat.sold { background-color:#ccc;cursor:not-allowed; }
+  .screen { margin:20px 0;background-color:#ccc;height:50px;text-align:center;line-height:50px;color:#666; }
+</style>
+
+<script>
+  document.querySelectorAll('.seat:not(.sold) label').forEach(function(label) {
+    label.addEventListener('click', function() {
+      var checkbox = document.getElementById(this.getAttribute('for'));
+      var seat = this.closest('.seat');
+      if (checkbox.checked) {
+        seat.classList.remove('selected');
+      } else {
+        seat.classList.add('selected');
+      }
+    });
+  });
+</script>
+{% endblock %}

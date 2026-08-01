@@ -1,0 +1,420 @@
+from django.db import models
+from django.contrib.auth.models import User
+
+
+# ---------------------------------------------------------------------------
+# Lookup / reference tables
+# ---------------------------------------------------------------------------
+
+class Genre(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+
+class Language(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+
+class CastMember(models.Model):
+    ROLE_CHOICES = [
+        ('actor', 'Actor'),
+        ('director', 'Director'),
+        ('producer', 'Producer'),
+        ('writer', 'Writer'),
+    ]
+    name = models.CharField(max_length=255)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='actor')
+    photo = models.ImageField(upload_to='cast/', blank=True, null=True)
+
+    def __str__(self):
+        return f'{self.name} ({self.get_role_display()})'
+
+    class Meta:
+        ordering = ['name']
+
+
+# ---------------------------------------------------------------------------
+# Core Movie model
+# ---------------------------------------------------------------------------
+
+class Movie(models.Model):
+    STATUS_CHOICES = [
+        ('upcoming', 'Upcoming'),
+        ('now_showing', 'Now Showing'),
+        ('ended', 'Ended'),
+    ]
+
+    # Basic info
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    duration_minutes = models.PositiveIntegerField(default=0, help_text='Duration in minutes')
+    release_date = models.DateField(null=True, blank=True)
+    age_certification = models.CharField(
+        max_length=10,
+        help_text='e.g. U, UA, A, PG-13, R',
+        blank=True
+    )
+    trailer_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text='YouTube trailer URL'
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='upcoming')
+
+    # Primary poster
+    poster = models.ImageField(upload_to='movies/posters/', blank=True, null=True)
+
+    # Relationships
+    genres = models.ManyToManyField(Genre, blank=True, related_name='movies')
+    languages = models.ManyToManyField(Language, blank=True, related_name='movies')
+    cast = models.ManyToManyField(CastMember, blank=True, related_name='movies')
+
+    # Legacy field kept for backward compatibility with existing views/templates
+    name = models.CharField(max_length=255, blank=True, editable=False)
+    image = models.ImageField(upload_to='movies/', blank=True, null=True)
+    rating = models.DecimalField(max_digits=3, decimal_places=1, default=0.0)
+    review_count = models.PositiveIntegerField(default=0, editable=False)
+
+    def update_rating(self):
+        """Recalculate avg rating and review count from active reviews."""
+        from django.db.models import Avg
+        result = self.reviews.filter(is_active=True).aggregate(avg=Avg('rating'))
+        self.rating = round(result['avg'] or 0, 1)
+        self.review_count = self.reviews.filter(is_active=True).count()
+        self.save(update_fields=['rating', 'review_count'])
+
+    def save(self, *args, **kwargs):
+        # Keep legacy `name` in sync with `title`
+        self.name = self.title
+        # Keep legacy `image` in sync with `poster`
+        if self.poster and not self.image:
+            self.image = self.poster
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        ordering = ['-release_date']
+
+
+# ---------------------------------------------------------------------------
+# Movie gallery images
+# ---------------------------------------------------------------------------
+
+class MovieImage(models.Model):
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='movies/gallery/')
+    caption = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return f'Image for {self.movie.title}'
+
+
+# ---------------------------------------------------------------------------
+# Theater & ShowSchedule
+# ---------------------------------------------------------------------------
+
+class Theater(models.Model):
+    name = models.CharField(max_length=255)
+    location = models.CharField(max_length=255, blank=True)
+    total_seats = models.PositiveIntegerField(default=0)
+
+    # Legacy FK kept for existing views
+    movie = models.ForeignKey(
+        Movie, on_delete=models.CASCADE,
+        related_name='theaters',
+        null=True, blank=True
+    )
+    time = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+
+class ShowSchedule(models.Model):
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='schedules')
+    theater = models.ForeignKey(Theater, on_delete=models.CASCADE, related_name='schedules')
+    show_time = models.DateTimeField()
+    price = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
+    available_seats = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f'{self.movie.title} @ {self.theater.name} — {self.show_time}'
+
+    class Meta:
+        ordering = ['show_time']
+        unique_together = ('theater', 'show_time')
+
+
+# ---------------------------------------------------------------------------
+# Seat (legacy - kept for backward compatibility)
+# ---------------------------------------------------------------------------
+
+class Seat(models.Model):
+    theater = models.ForeignKey(Theater, on_delete=models.CASCADE, related_name='seats')
+    seat_number = models.CharField(max_length=10)
+    is_booked = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'{self.seat_number} in {self.theater.name}'
+
+
+# ---------------------------------------------------------------------------
+# Booking system
+# ---------------------------------------------------------------------------
+
+import uuid
+from django.core.exceptions import ValidationError
+from django.db import transaction
+
+
+class Booking(models.Model):
+    BOOKING_STATUS = [
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('cancelled', 'Cancelled'),
+        ('completed', 'Completed'),
+    ]
+
+    # Core fields
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookings')
+    show_schedule = models.ForeignKey(ShowSchedule, on_delete=models.CASCADE, related_name='bookings', null=True, blank=True)
+    
+    # Booking details
+    booking_reference = models.CharField(max_length=20, unique=True, editable=False)
+    number_of_seats = models.PositiveIntegerField()
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, editable=False, default=0)
+    status = models.CharField(max_length=20, choices=BOOKING_STATUS, default='pending')
+    
+    # Timestamps
+    booked_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # Legacy fields kept for backward compatibility
+    seat = models.OneToOneField(Seat, on_delete=models.CASCADE, null=True, blank=True)
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, null=True, blank=True)
+    theater = models.ForeignKey(Theater, on_delete=models.CASCADE, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-booked_at']
+        indexes = [
+            models.Index(fields=['booking_reference']),
+            models.Index(fields=['user', '-booked_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.booking_reference} - {self.user.username} ({self.status})'
+
+    def clean(self):
+        """Validate booking before saving"""
+        if self.number_of_seats <= 0:
+            raise ValidationError('Number of seats must be greater than zero.')
+
+        if self.show_schedule and self.number_of_seats > self.show_schedule.available_seats:
+            raise ValidationError(
+                f'Only {self.show_schedule.available_seats} seats available. Cannot book {self.number_of_seats}.'
+            )
+
+    def save(self, *args, **kwargs):
+        # Generate unique booking reference
+        if not self.booking_reference:
+            self.booking_reference = f'BMS{uuid.uuid4().hex[:12].upper()}'
+
+        # Calculate total price only when show_schedule exists
+        if self.show_schedule_id:
+            self.total_price = self.show_schedule.price * self.number_of_seats
+            self.movie = self.show_schedule.movie
+            self.theater = self.show_schedule.theater
+        elif not self.total_price:
+            self.total_price = 0
+
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @transaction.atomic
+    def confirm_booking(self):
+        """Confirm booking and reduce available seats"""
+        if self.status != 'pending':
+            raise ValidationError(f'Cannot confirm booking with status: {self.status}')
+        
+        # Lock the show schedule row to prevent race conditions
+        schedule = ShowSchedule.objects.select_for_update().get(pk=self.show_schedule.pk)
+        
+        if schedule.available_seats < self.number_of_seats:
+            raise ValidationError(
+                f'Not enough seats available. Only {schedule.available_seats} left.'
+            )
+        
+        # Reduce available seats
+        schedule.available_seats -= self.number_of_seats
+        schedule.save(update_fields=['available_seats'])
+        
+        # Update booking status
+        self.status = 'confirmed'
+        self.save(update_fields=['status', 'updated_at'])
+
+    @transaction.atomic
+    def cancel_booking(self):
+        """Cancel booking and restore available seats"""
+        if self.status not in ['pending', 'confirmed']:
+            raise ValidationError(f'Cannot cancel booking with status: {self.status}')
+        
+        # Only restore seats if booking was confirmed
+        if self.status == 'confirmed':
+            schedule = ShowSchedule.objects.select_for_update().get(pk=self.show_schedule.pk)
+            schedule.available_seats += self.number_of_seats
+            schedule.save(update_fields=['available_seats'])
+        
+        # Update booking status
+        self.status = 'cancelled'
+        self.save(update_fields=['status', 'updated_at'])
+
+
+# ---------------------------------------------------------------------------
+# Review system
+# ---------------------------------------------------------------------------
+
+from django.utils import timezone
+from django.db.models import Avg
+
+
+class Review(models.Model):
+    RATING_CHOICES = [(i, f'{i} Star{"s" if i > 1 else ""}') for i in range(1, 6)]
+
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+
+    rating = models.PositiveSmallIntegerField(choices=RATING_CHOICES)
+    title = models.CharField(max_length=150)
+    text = models.TextField()
+    is_active = models.BooleanField(default=True)
+    is_verified = models.BooleanField(
+        default=False,
+        help_text='Auto-set: user has a completed/confirmed booking for this movie'
+    )
+    moderation_note = models.TextField(
+        blank=True,
+        help_text='Internal note visible only to admins. Not shown to users.'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        # One review per user per movie
+        unique_together = ('movie', 'user')
+        indexes = [
+            models.Index(fields=['movie', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} → {self.movie.title} ({self.rating}★)'
+
+    def clean(self):
+        # Guard against being called before user/movie are assigned
+        if not self.user_id or not self.movie_id:
+            return
+
+        # Step 1: user must have a confirmed/completed booking for this movie
+        user_bookings = Booking.objects.filter(
+            user=self.user,
+            status__in=['confirmed', 'completed'],
+        ).filter(
+            models.Q(show_schedule__movie=self.movie) | models.Q(movie=self.movie)
+        )
+
+        if not user_bookings.exists():
+            raise ValidationError(
+                'You can only review a movie after a confirmed booking.'
+            )
+
+        # Step 2: the show the user booked must have already ended
+        show_ended = user_bookings.filter(
+            show_schedule__show_time__lt=timezone.now()
+        ).exists()
+
+        if not show_ended:
+            raise ValidationError(
+                'You can only review a movie after the show has ended.'
+            )
+
+    def save(self, *args, **kwargs):
+        # Only run business logic validation when user and movie are set
+        if self.user_id and self.movie_id:
+            self.is_verified = Booking.objects.filter(
+                user=self.user,
+                status__in=['confirmed', 'completed'],
+            ).filter(
+                models.Q(show_schedule__movie=self.movie) | models.Q(movie=self.movie)
+            ).exists()
+
+        super().save(*args, **kwargs)
+        if self.movie_id:
+            self.movie.update_rating()
+
+    def delete(self, *args, **kwargs):
+        movie = self.movie
+        super().delete(*args, **kwargs)
+        movie.update_rating()
+
+
+# ---------------------------------------------------------------------------
+# Review reporting & moderation
+# ---------------------------------------------------------------------------
+
+class ReportedReview(models.Model):
+    REASON_CHOICES = [
+        ('spam', 'Spam'),
+        ('offensive', 'Offensive Content'),
+        ('harassment', 'Harassment'),
+        ('false_info', 'False Information'),
+        ('spoiler', 'Spoiler'),
+        ('other', 'Other'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('reviewed', 'Reviewed'),
+        ('dismissed', 'Dismissed'),
+        ('resolved', 'Resolved'),
+    ]
+
+    review = models.ForeignKey(Review, on_delete=models.CASCADE, related_name='reports')
+    reported_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reported_reviews')
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES)
+    comments = models.TextField(blank=True, help_text='Optional additional context from the reporter')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    reported_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='moderated_reports',
+        help_text='Admin who last acted on this report'
+    )
+
+    class Meta:
+        ordering = ['-reported_at']
+        # Prevent duplicate reports from the same user on the same review
+        unique_together = ('review', 'reported_by')
+        indexes = [
+            models.Index(fields=['status', '-reported_at']),
+        ]
+
+    def __str__(self):
+        return f'Report by {self.reported_by.username} on "{self.review}" [{self.status}]'

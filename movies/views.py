@@ -1,5 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required, user_passes_test
+
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Count
@@ -790,7 +792,8 @@ def admin_update_seat_status(request):
                 BookingSeat.objects.filter(show_schedule=schedule).delete()
             messages.info(request, f'All seats for {screen.name} reset to Available.')
 
-        redirect_url = f"{reversed('admin_manage_seats')}?theater_id={screen.theater.id}&screen_id={screen.id}"
+        redirect_url = f"{reverse('admin_manage_seats')}?theater_id={screen.theater.id}&screen_id={screen.id}"
+
         if schedule_id:
             redirect_url += f"&schedule_id={schedule_id}"
         return redirect(redirect_url)

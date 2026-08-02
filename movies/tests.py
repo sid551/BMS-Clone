@@ -1,3 +1,211 @@
-from django.test import TestCase
+from datetime import timedelta
+from django.test import TestCase, Client
+from django.contrib.auth.models import User
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+from django.urls import reverse
 
-# Create your tests here.
+from .models import (
+    Genre, Language, CastMember, Movie, MovieImage,
+    Theater, ShowSchedule, Booking, Review, ReportedReview
+)
+from .templatetags.movie_tags import youtube_embed_id, format_duration
+from .recommendations import get_similar_movies, get_trending_movies, get_recently_released
+
+
+class MovieManagementTestCase(TestCase):
+    def setUp(self):
+        # Users
+        self.normal_user = User.objects.create_user(username='john', password='password123')
+        self.other_user = User.objects.create_user(username='jane', password='password123')
+        self.staff_user = User.objects.create_superuser(username='admin', password='adminpassword')
+
+        # Genres & Languages
+        self.action = Genre.objects.create(name='Action')
+        self.sci_fi = Genre.objects.create(name='Sci-Fi')
+        self.drama = Genre.objects.create(name='Drama')
+
+        self.english = Language.objects.create(name='English')
+        self.hindi = Language.objects.create(name='Hindi')
+
+        # Cast
+        self.actor = CastMember.objects.create(name='Christopher Nolan', role='director')
+
+        # Movies
+        self.movie1 = Movie.objects.create(
+            title='Inception',
+            description='A thief who steals corporate secrets through the use of dream-sharing technology.',
+            duration_minutes=148,
+            release_date=timezone.now().date() - timedelta(days=30),
+            age_certification='U/A 13+',
+            trailer_url='https://www.youtube.com/watch?v=YoHD9XEInc0',
+            status='now_showing'
+        )
+        self.movie1.genres.add(self.action, self.sci_fi)
+        self.movie1.languages.add(self.english)
+        self.movie1.cast.add(self.actor)
+
+        self.movie2 = Movie.objects.create(
+            title='Interstellar',
+            description='A team of explorers travel through a wormhole in space.',
+            duration_minutes=169,
+            release_date=timezone.now().date() - timedelta(days=60),
+            age_certification='U/A 13+',
+            trailer_url='https://youtu.be/zSWdZVtXT7E',
+            status='now_showing'
+        )
+        self.movie2.genres.add(self.sci_fi, self.drama)
+        self.movie2.languages.add(self.english)
+
+        # Theater & Schedules
+        self.theater = Theater.objects.create(name='PVR Cinema', location='Downtown', total_seats=100)
+
+        # Past schedule
+        self.past_schedule = ShowSchedule.objects.create(
+            movie=self.movie1,
+            theater=self.theater,
+            show_time=timezone.now() - timedelta(hours=5),
+            price=250.00,
+            available_seats=100
+        )
+
+        # Future schedule
+        self.future_schedule = ShowSchedule.objects.create(
+            movie=self.movie1,
+            theater=self.theater,
+            show_time=timezone.now() + timedelta(days=2),
+            price=250.00,
+            available_seats=100
+        )
+
+        self.client = Client()
+
+    def test_youtube_embed_id_filter(self):
+        url1 = 'https://www.youtube.com/watch?v=YoHD9XEInc0'
+        url2 = 'https://youtu.be/zSWdZVtXT7E?t=30'
+        url3 = 'https://www.youtube.com/shorts/abcdefghijk'
+        url4 = 'https://m.youtube.com/watch?v=12345678901'
+
+        self.assertIn('YoHD9XEInc0', youtube_embed_id(url1))
+        self.assertIn('zSWdZVtXT7E', youtube_embed_id(url2))
+        self.assertIn('abcdefghijk', youtube_embed_id(url3))
+        self.assertIn('12345678901', youtube_embed_id(url4))
+
+    def test_format_duration(self):
+        self.assertEqual(format_duration(148), '2h 28m')
+        self.assertEqual(format_duration(60), '1h')
+        self.assertEqual(format_duration(45), '45m')
+        self.assertEqual(self.movie1.duration_formatted, '2h 28m')
+
+    def test_booking_and_review_restrictions(self):
+        # 1. Unbooked user cannot review
+        review = Review(movie=self.movie1, user=self.normal_user, rating=5, title='Great', text='Awesome movie')
+        with self.assertRaises(ValidationError):
+            review.full_clean()
+
+        # 2. Book future show
+        future_booking = Booking.objects.create(
+            user=self.normal_user,
+            show_schedule=self.future_schedule,
+            number_of_seats=2,
+            status='confirmed'
+        )
+        with self.assertRaises(ValidationError):
+            review.full_clean()
+
+        # 3. Book past show
+        past_booking = Booking.objects.create(
+            user=self.normal_user,
+            show_schedule=self.past_schedule,
+            number_of_seats=2,
+            status='confirmed'
+        )
+        # Should now pass clean validation
+        review.full_clean()
+        review.save()
+
+        self.assertTrue(review.is_verified)
+        self.assertEqual(self.movie1.rating, 5.0)
+        self.assertEqual(self.movie1.review_count, 1)
+
+    def test_average_rating_recalculation(self):
+        # Setup past bookings
+        Booking.objects.create(
+            user=self.normal_user,
+            show_schedule=self.past_schedule,
+            number_of_seats=1,
+            status='confirmed'
+        )
+        Booking.objects.create(
+            user=self.other_user,
+            show_schedule=self.past_schedule,
+            number_of_seats=1,
+            status='confirmed'
+        )
+
+        r1 = Review.objects.create(movie=self.movie1, user=self.normal_user, rating=4, title='Good', text='Enjoyed it')
+        self.movie1.refresh_from_db()
+        self.assertEqual(self.movie1.rating, 4.0)
+
+        r2 = Review.objects.create(movie=self.movie1, user=self.other_user, rating=2, title='Okay', text='Average')
+        self.movie1.refresh_from_db()
+        # Avg of 4 and 2 is 3.0
+        self.assertEqual(self.movie1.rating, 3.0)
+        self.assertEqual(self.movie1.review_count, 2)
+
+        # Deactivate r2
+        r2.is_active = False
+        r2.save()
+        self.movie1.refresh_from_db()
+        self.assertEqual(self.movie1.rating, 4.0)
+        self.assertEqual(self.movie1.review_count, 1)
+
+    def test_report_review_flow(self):
+        Booking.objects.create(
+            user=self.normal_user,
+            show_schedule=self.past_schedule,
+            number_of_seats=1,
+            status='confirmed'
+        )
+        review = Review.objects.create(movie=self.movie1, user=self.normal_user, rating=5, title='Loved it', text='Nice')
+
+        # Report review by other user
+        report = ReportedReview.objects.create(
+            review=review,
+            reported_by=self.other_user,
+            reason='spam',
+            comments='Looks like promo'
+        )
+        self.assertEqual(report.status, 'pending')
+
+        # Admin resolves report by hiding review
+        self.client.login(username='admin', password='adminpassword')
+        response = self.client.post(reverse('admin_resolve_report', args=[report.id]), {'action': 'hide_review'})
+        self.assertEqual(response.status_code, 302)
+
+        review.refresh_from_db()
+        report.refresh_from_db()
+        self.assertFalse(review.is_active)
+        self.assertEqual(report.status, 'resolved')
+
+    def test_recommendations(self):
+        similar = list(get_similar_movies(self.movie1))
+        self.assertIn(self.movie2, similar)
+
+        trending = list(get_trending_movies())
+        self.assertGreaterEqual(len(trending), 1)
+
+        recent = list(get_recently_released())
+        self.assertEqual(recent[0], self.movie1)
+
+    def test_custom_admin_permissions(self):
+        # Normal user access denied
+        self.client.login(username='john', password='password123')
+        resp = self.client.get(reverse('admin_dashboard'))
+        self.assertEqual(resp.status_code, 302)
+
+        # Staff user access granted
+        self.client.login(username='admin', password='adminpassword')
+        resp = self.client.get(reverse('admin_dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Movie Management Admin Panel')

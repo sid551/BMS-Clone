@@ -339,6 +339,22 @@
   {% endwith %}
 {% endif %}
 
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var trailerModal = document.getElementById('trailerModal');
+    var trailerFrame = document.getElementById('trailerFrame');
+    if (trailerModal && trailerFrame) {
+      var originalSrc = trailerFrame.src;
+      $(trailerModal).on('hidden.bs.modal', function () {
+        trailerFrame.src = '';
+      });
+      $(trailerModal).on('show.bs.modal', function () {
+        trailerFrame.src = originalSrc;
+      });
+    }
+  });
+</script>
+
 <style>
   .movie-card { transition: transform 0.2s, box-shadow 0.2s; border-radius: 8px; overflow: hidden; }
   .movie-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,.15) !important; }

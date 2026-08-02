@@ -1,0 +1,141 @@
+{% extends "users/basic.html" %}
+
+{% block title %}Admin Management Dashboard - BookMySeat{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-user-shield text-primary mr-2"></i>Movie Management Admin Panel</h2>
+    <a href="{% url 'admin:index' %}" class="btn btn-outline-secondary btn-sm" target="_blank">
+      <i class="fas fa-cog mr-1"></i> Open Django Native Admin
+    </a>
+  </div>
+
+  {% for message in messages %}
+    <div class="alert alert-info alert-dismissible fade show mb-3">
+      {{ message }}
+      <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+    </div>
+  {% endfor %}
+
+  <!-- Quick Stats -->
+  <div class="row mb-4">
+    <div class="col-md-3 col-6 mb-3">
+      <div class="card bg-primary text-white shadow-sm">
+        <div class="card-body text-center">
+          <h3 class="display-4 font-weight-bold mb-0">{{ movie_count }}</h3>
+          <p class="mb-0 font-weight-light">Movies</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+      <div class="card bg-success text-white shadow-sm">
+        <div class="card-body text-center">
+          <h3 class="display-4 font-weight-bold mb-0">{{ schedule_count }}</h3>
+          <p class="mb-0 font-weight-light">Show Schedules</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+      <div class="card bg-info text-white shadow-sm">
+        <div class="card-body text-center">
+          <h3 class="display-4 font-weight-bold mb-0">{{ theater_count }}</h3>
+          <p class="mb-0 font-weight-light">Theaters</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+      <div class="card bg-warning text-dark shadow-sm">
+        <div class="card-body text-center">
+          <h3 class="display-4 font-weight-bold mb-0">{{ pending_reports }}</h3>
+          <p class="mb-0 font-weight-light">Pending Reports</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Action Navigation -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header bg-dark text-white font-weight-bold">
+      <i class="fas fa-th-large mr-2"></i>Management Modules
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3 mb-2">
+          <a href="{% url 'admin_manage_movies' %}" class="btn btn-outline-primary btn-block p-3">
+            <i class="fas fa-film fa-2x mb-2 d-block"></i> Manage Movies
+          </a>
+        </div>
+        <div class="col-md-3 mb-2">
+          <a href="{% url 'admin_manage_schedules' %}" class="btn btn-outline-success btn-block p-3">
+            <i class="fas fa-calendar-alt fa-2x mb-2 d-block"></i> Show Schedules
+          </a>
+        </div>
+        <div class="col-md-3 mb-2">
+          <a href="{% url 'admin_manage_taxonomies' %}" class="btn btn-outline-info btn-block p-3">
+            <i class="fas fa-tags fa-2x mb-2 d-block"></i> Genres, Languages & Cast
+          </a>
+        </div>
+        <div class="col-md-3 mb-2">
+          <a href="{% url 'admin_manage_reports' %}" class="btn btn-outline-warning btn-block p-3">
+            <i class="fas fa-flag fa-2x mb-2 d-block"></i> Moderate Reviews
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Recent Movies -->
+    <div class="col-md-6 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center font-weight-bold">
+          <span><i class="fas fa-film text-primary mr-2"></i>Recent Movies</span>
+          <a href="{% url 'admin_movie_add' %}" class="btn btn-sm btn-primary">+ Add Movie</a>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            {% for m in recent_movies %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <strong>{{ m.title }}</strong>
+                  <small class="text-muted ml-2">({{ m.get_status_display }})</small>
+                </div>
+                <a href="{% url 'admin_movie_edit' m.id %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+              </li>
+            {% empty %}
+              <li class="list-group-item text-muted">No movies added yet.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Reports -->
+    <div class="col-md-6 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center font-weight-bold">
+          <span><i class="fas fa-flag text-danger mr-2"></i>Pending Review Reports</span>
+          <a href="{% url 'admin_manage_reports' %}" class="btn btn-sm btn-outline-danger">View All</a>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            {% for r in recent_reports %}
+              <li class="list-group-item">
+                <div class="d-flex justify-content-between">
+                  <small class="text-danger font-weight-bold">{{ r.get_reason_display }}</small>
+                  <small class="text-muted">{{ r.reported_at|date:"M d, H:i" }}</small>
+                </div>
+                <div class="small">By <strong>{{ r.reported_by.username }}</strong> on "{{ r.review.title }}"</div>
+              </li>
+            {% empty %}
+              <li class="list-group-item text-muted text-center py-4">No pending reports!</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

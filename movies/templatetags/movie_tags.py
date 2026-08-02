@@ -18,15 +18,13 @@ def image_url(image_field, fallback='https://placehold.co/300x400?text=No+Image'
 def youtube_embed_id(url):
     """
     Extract the YouTube video ID and return a standard embed URL.
-    Supports youtube.com/watch?v=ID, youtu.be/ID, and youtube.com/shorts/ID.
+    Supports youtube.com/watch?v=ID, youtu.be/ID, shorts, embed, m.youtube, music.youtube, etc.
     """
     if not url:
         return ''
     patterns = [
-        r'(?:youtube\.com/watch\?v=)([a-zA-Z0-9_-]{11})',
-        r'(?:youtu\.be/)([a-zA-Z0-9_-]{11})',
-        r'(?:youtube\.com/shorts/)([a-zA-Z0-9_-]{11})',
-        r'(?:youtube\.com/embed/)([a-zA-Z0-9_-]{11})',
+        r'(?:v=|\/embed\/|\/shorts\/|youtu\.be\/|\/v\/|\/e\/)([a-zA-Z0-9_-]{11})',
+        r'[\?&]v=([a-zA-Z0-9_-]{11})',
     ]
     for pattern in patterns:
         match = re.search(pattern, str(url))
@@ -34,6 +32,25 @@ def youtube_embed_id(url):
             video_id = match.group(1)
             return f'https://www.youtube.com/embed/{video_id}?rel=0&modestbranding=1'
     return ''
+
+
+@register.filter
+def format_duration(minutes):
+    """Format duration in minutes as Xh Ym or Ym."""
+    try:
+        mins = int(minutes)
+        if mins <= 0:
+            return ''
+        hours = mins // 60
+        remaining_mins = mins % 60
+        if hours > 0 and remaining_mins > 0:
+            return f'{hours}h {remaining_mins}m'
+        elif hours > 0:
+            return f'{hours}h'
+        else:
+            return f'{remaining_mins}m'
+    except (ValueError, TypeError):
+        return ''
 
 
 @register.filter
@@ -55,3 +72,4 @@ def render_stars(rating):
         else:
             stars += '<span class="text-muted">&#9734;</span>'
     return mark_safe(stars)
+

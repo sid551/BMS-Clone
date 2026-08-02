@@ -55,14 +55,24 @@ class Movie(models.Model):
         ('ended', 'Ended'),
     ]
 
+    AGE_CERTIFICATION_CHOICES = [
+        ('U', 'U - Unrestricted Public Exhibition'),
+        ('U/A', 'U/A - Parental Guidance Suggested'),
+        ('U/A 13+', 'U/A 13+ - Suitable for 13 years and above'),
+        ('U/A 16+', 'U/A 16+ - Suitable for 16 years and above'),
+        ('A', 'A - Restricted to Adults'),
+        ('S', 'S - Restricted to Specialized Audiences'),
+    ]
+
     # Basic info
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     duration_minutes = models.PositiveIntegerField(default=0, help_text='Duration in minutes')
     release_date = models.DateField(null=True, blank=True)
     age_certification = models.CharField(
-        max_length=10,
-        help_text='e.g. U, UA, A, PG-13, R',
+        max_length=20,
+        choices=AGE_CERTIFICATION_CHOICES,
+        help_text='e.g. U, U/A, U/A 13+, A',
         blank=True
     )
     trailer_url = models.URLField(
@@ -85,6 +95,18 @@ class Movie(models.Model):
     image = models.ImageField(upload_to='movies/', blank=True, null=True)
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0.0)
     review_count = models.PositiveIntegerField(default=0, editable=False)
+
+    @property
+    def duration_formatted(self):
+        if not self.duration_minutes:
+            return ""
+        hours = self.duration_minutes // 60
+        mins = self.duration_minutes % 60
+        if hours > 0 and mins > 0:
+            return f"{hours}h {mins}m"
+        elif hours > 0:
+            return f"{hours}h"
+        return f"{mins}m"
 
     def update_rating(self):
         """Recalculate avg rating and review count from active reviews."""
@@ -346,7 +368,9 @@ class Review(models.Model):
 
         # Step 2: the show the user booked must have already ended
         show_ended = user_bookings.filter(
-            show_schedule__show_time__lt=timezone.now()
+            models.Q(show_schedule__show_time__lt=timezone.now()) |
+            models.Q(show_schedule__isnull=True, theater__time__lt=timezone.now()) |
+            models.Q(show_schedule__isnull=True, theater__time__isnull=True, booked_at__lt=timezone.now())
         ).exists()
 
         if not show_ended:

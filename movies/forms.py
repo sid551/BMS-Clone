@@ -1,5 +1,5 @@
 from django import forms
-from .models import Review
+from .models import Movie, Genre, Language, CastMember, Theater, ShowSchedule, Review, ReportedReview
 
 
 class ReviewForm(forms.ModelForm):
@@ -11,8 +11,6 @@ class ReviewForm(forms.ModelForm):
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Review title'}),
             'text': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Write your review...'}),
         }
-
-from .models import ReportedReview
 
 
 class ReportReviewForm(forms.ModelForm):
@@ -27,3 +25,76 @@ class ReportReviewForm(forms.ModelForm):
                 'placeholder': 'Optional: provide additional context...'
             }),
         }
+
+
+class MovieForm(forms.ModelForm):
+    class Meta:
+        model = Movie
+        fields = [
+            'title', 'description', 'duration_minutes', 'release_date',
+            'age_certification', 'trailer_url', 'status', 'poster',
+            'genres', 'languages', 'cast'
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Movie title'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'duration_minutes': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'release_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'age_certification': forms.Select(attrs={'class': 'form-control'}),
+            'trailer_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://www.youtube.com/watch?v=...'}),
+            'status': forms.Select(attrs={'class': 'form-control'}),
+            'poster': forms.FileInput(attrs={'class': 'form-control-file'}),
+            'genres': forms.SelectMultiple(attrs={'class': 'form-control', 'style': 'height: 120px;'}),
+            'languages': forms.SelectMultiple(attrs={'class': 'form-control', 'style': 'height: 120px;'}),
+            'cast': forms.SelectMultiple(attrs={'class': 'form-control', 'style': 'height: 120px;'}),
+        }
+
+
+class GenreForm(forms.ModelForm):
+    class Meta:
+        model = Genre
+        fields = ['name']
+        widgets = {'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Genre name'})}
+
+
+class LanguageForm(forms.ModelForm):
+    class Meta:
+        model = Language
+        fields = ['name']
+        widgets = {'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Language name'})}
+
+
+class CastMemberForm(forms.ModelForm):
+    class Meta:
+        model = CastMember
+        fields = ['name', 'role', 'photo']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'role': forms.Select(attrs={'class': 'form-control'}),
+            'photo': forms.FileInput(attrs={'class': 'form-control-file'}),
+        }
+
+
+class TheaterForm(forms.ModelForm):
+    class Meta:
+        model = Theater
+        fields = ['name', 'location', 'total_seats']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'location': forms.TextInput(attrs={'class': 'form-control'}),
+            'total_seats': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+        }
+
+
+class ShowScheduleForm(forms.ModelForm):
+    class Meta:
+        model = ShowSchedule
+        fields = ['movie', 'theater', 'show_time', 'price', 'available_seats']
+        widgets = {
+            'movie': forms.Select(attrs={'class': 'form-control'}),
+            'theater': forms.Select(attrs={'class': 'form-control'}),
+            'show_time': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'available_seats': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+        }
+

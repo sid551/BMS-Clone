@@ -1,11 +1,19 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.utils import timezone
-from .models import Movie, Theater, Seat, Booking, ShowSchedule, Review, ReportedReview
-from .forms import ReviewForm, ReportReviewForm
+from .models import Movie, Genre, Language, CastMember, Theater, Seat, Booking, ShowSchedule, Review, ReportedReview
+from .forms import (
+    ReviewForm, ReportReviewForm, MovieForm, GenreForm, LanguageForm,
+    CastMemberForm, TheaterForm, ShowScheduleForm
+)
+
+
+def is_staff_user(user):
+    return user.is_authenticated and user.is_staff
+
 
 
 def movie_list(request):
@@ -284,3 +292,212 @@ def report_review(request, review_id):
         'form': form,
         'review': review,
     })
+
+
+# ---------------------------------------------------------------------------
+# Custom Admin Interface views (Staff required)
+# ---------------------------------------------------------------------------
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_dashboard(request):
+    movie_count = Movie.objects.count()
+    genre_count = Genre.objects.count()
+    language_count = Language.objects.count()
+    cast_count = CastMember.objects.count()
+    theater_count = Theater.objects.count()
+    schedule_count = ShowSchedule.objects.count()
+    pending_reports = ReportedReview.objects.filter(status='pending').count()
+
+    recent_movies = Movie.objects.all()[:5]
+    recent_reports = ReportedReview.objects.select_related('review', 'reported_by').filter(status='pending')[:5]
+
+    return render(request, 'movies/custom_admin/dashboard.html', {
+        'movie_count': movie_count,
+        'genre_count': genre_count,
+        'language_count': language_count,
+        'cast_count': cast_count,
+        'theater_count': theater_count,
+        'schedule_count': schedule_count,
+        'pending_reports': pending_reports,
+        'recent_movies': recent_movies,
+        'recent_reports': recent_reports,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_manage_movies(request):
+    search = request.GET.get('search', '').strip()
+    movies = Movie.objects.all()
+    if search:
+        movies = movies.filter(title__icontains=search)
+    return render(request, 'movies/custom_admin/manage_movies.html', {
+        'movies': movies,
+        'search': search,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_movie_form(request, movie_id=None):
+    movie = get_object_or_404(Movie, id=movie_id) if movie_id else None
+    if request.method == 'POST':
+        form = MovieForm(request.POST, request.FILES, instance=movie)
+        if form.is_valid():
+            saved_movie = form.save()
+            messages.success(request, f'Movie "{saved_movie.title}" saved successfully.')
+            return redirect('admin_manage_movies')
+    else:
+        form = MovieForm(instance=movie)
+
+    return render(request, 'movies/custom_admin/movie_form.html', {
+        'form': form,
+        'movie': movie,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_movie_delete(request, movie_id):
+    movie = get_object_or_404(Movie, id=movie_id)
+    if request.method == 'POST':
+        title = movie.title
+        movie.delete()
+        messages.success(request, f'Movie "{title}" deleted.')
+        return redirect('admin_manage_movies')
+    return render(request, 'movies/custom_admin/confirm_delete.html', {
+        'object': movie,
+        'type': 'Movie',
+        'cancel_url': 'admin_manage_movies'
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_manage_schedules(request):
+    schedules = ShowSchedule.objects.select_related('movie', 'theater').order_by('-show_time')
+    return render(request, 'movies/custom_admin/manage_schedules.html', {
+        'schedules': schedules,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_schedule_form(request, schedule_id=None):
+    schedule = get_object_or_404(ShowSchedule, id=schedule_id) if schedule_id else None
+    if request.method == 'POST':
+        form = ShowScheduleForm(request.POST, instance=schedule)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Show schedule saved successfully.')
+            return redirect('admin_manage_schedules')
+    else:
+        form = ShowScheduleForm(instance=schedule)
+
+    return render(request, 'movies/custom_admin/schedule_form.html', {
+        'form': form,
+        'schedule': schedule,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_schedule_delete(request, schedule_id):
+    schedule = get_object_or_404(ShowSchedule, id=schedule_id)
+    if request.method == 'POST':
+        schedule.delete()
+        messages.success(request, 'Schedule deleted.')
+        return redirect('admin_manage_schedules')
+    return render(request, 'movies/custom_admin/confirm_delete.html', {
+        'object': schedule,
+        'type': 'Show Schedule',
+        'cancel_url': 'admin_manage_schedules'
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_manage_reports(request):
+    reports = ReportedReview.objects.select_related('review', 'review__movie', 'review__user', 'reported_by')
+    return render(request, 'movies/custom_admin/manage_reports.html', {
+        'reports': reports,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_resolve_report(request, report_id):
+    report = get_object_or_404(ReportedReview, id=report_id)
+    action = request.POST.get('action')
+
+    if request.method == 'POST' and action:
+        if action == 'hide_review':
+            report.review.is_active = False
+            report.review.save()
+            report.review.movie.update_rating()
+            report.status = 'resolved'
+            report.reviewed_by = request.user
+            report.reviewed_at = timezone.now()
+            report.save()
+            messages.success(request, 'Review hidden and report resolved.')
+        elif action == 'dismiss':
+            report.status = 'dismissed'
+            report.reviewed_by = request.user
+            report.reviewed_at = timezone.now()
+            report.save()
+            messages.info(request, 'Report dismissed.')
+        elif action == 'restore_review':
+            report.review.is_active = True
+            report.review.save()
+            report.review.movie.update_rating()
+            report.status = 'dismissed'
+            report.reviewed_by = request.user
+            report.reviewed_at = timezone.now()
+            report.save()
+            messages.success(request, 'Review restored and report dismissed.')
+
+    return redirect('admin_manage_reports')
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_manage_taxonomies(request):
+    genres = Genre.objects.all()
+    languages = Language.objects.all()
+    cast_members = CastMember.objects.all()
+    theaters = Theater.objects.all()
+
+    genre_form = GenreForm(prefix='genre')
+    language_form = LanguageForm(prefix='lang')
+    cast_form = CastMemberForm(prefix='cast')
+    theater_form = TheaterForm(prefix='theater')
+
+    if request.method == 'POST':
+        item_type = request.POST.get('item_type')
+        if item_type == 'genre':
+            genre_form = GenreForm(request.POST, prefix='genre')
+            if genre_form.is_valid():
+                genre_form.save()
+                messages.success(request, 'Genre added.')
+                return redirect('admin_manage_taxonomies')
+        elif item_type == 'language':
+            language_form = LanguageForm(request.POST, prefix='lang')
+            if language_form.is_valid():
+                language_form.save()
+                messages.success(request, 'Language added.')
+                return redirect('admin_manage_taxonomies')
+        elif item_type == 'cast':
+            cast_form = CastMemberForm(request.POST, request.FILES, prefix='cast')
+            if cast_form.is_valid():
+                cast_form.save()
+                messages.success(request, 'Cast member added.')
+                return redirect('admin_manage_taxonomies')
+        elif item_type == 'theater':
+            theater_form = TheaterForm(request.POST, prefix='theater')
+            if theater_form.is_valid():
+                theater_form.save()
+                messages.success(request, 'Theater added.')
+                return redirect('admin_manage_taxonomies')
+
+    return render(request, 'movies/custom_admin/manage_taxonomies.html', {
+        'genres': genres,
+        'languages': languages,
+        'cast_members': cast_members,
+        'theaters': theaters,
+        'genre_form': genre_form,
+        'language_form': language_form,
+        'cast_form': cast_form,
+        'theater_form': theater_form,
+    })
+

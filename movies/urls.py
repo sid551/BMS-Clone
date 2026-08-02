@@ -10,4 +10,18 @@ urlpatterns = [
     path('review/<int:review_id>/edit/', views.edit_review, name='edit_review'),
     path('review/<int:review_id>/delete/', views.delete_review, name='delete_review'),
     path('review/<int:review_id>/report/', views.report_review, name='report_review'),
-]
+
+    # Custom Admin Management Routes
+    path('manage/', views.admin_dashboard, name='admin_dashboard'),
+    path('manage/movies/', views.admin_manage_movies, name='admin_manage_movies'),
+    path('manage/movies/add/', views.admin_movie_form, name='admin_movie_add'),
+    path('manage/movies/<int:movie_id>/edit/', views.admin_movie_form, name='admin_movie_edit'),
+    path('manage/movies/<int:movie_id>/delete/', views.admin_movie_delete, name='admin_movie_delete'),
+    path('manage/schedules/', views.admin_manage_schedules, name='admin_manage_schedules'),
+    path('manage/schedules/add/', views.admin_schedule_form, name='admin_schedule_add'),
+    path('manage/schedules/<int:schedule_id>/edit/', views.admin_schedule_form, name='admin_schedule_edit'),
+    path('manage/schedules/<int:schedule_id>/delete/', views.admin_schedule_delete, name='admin_schedule_delete'),
+    path('manage/reports/', views.admin_manage_reports, name='admin_manage_reports'),
+    path('manage/reports/<int:report_id>/resolve/', views.admin_resolve_report, name='admin_resolve_report'),
+    path('manage/taxonomies/', views.admin_manage_taxonomies, name='admin_manage_taxonomies'),
+]

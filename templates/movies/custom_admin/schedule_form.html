@@ -1,0 +1,43 @@
+{% extends "users/basic.html" %}
+
+{% block title %}{% if schedule %}Edit Schedule{% else %}Add Schedule{% endif %} - Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <a href="{% url 'admin_manage_schedules' %}" class="text-muted small">&laquo; Back to Schedules</a>
+  <h2 class="mb-4">{% if schedule %}Edit Show Schedule{% else %}Add New Show Schedule{% endif %}</h2>
+
+  <div class="card shadow-sm" style="max-width: 600px;">
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+          <label>Movie *</label>
+          {{ form.movie }}
+        </div>
+        <div class="form-group">
+          <label>Theater *</label>
+          {{ form.theater }}
+        </div>
+        <div class="form-group">
+          <label>Show Time *</label>
+          {{ form.show_time }}
+        </div>
+        <div class="form-group">
+          <label>Ticket Price (&#8377;) *</label>
+          {{ form.price }}
+        </div>
+        <div class="form-group">
+          <label>Available Seats *</label>
+          {{ form.available_seats }}
+        </div>
+
+        <div class="border-top pt-3 text-right">
+          <a href="{% url 'admin_manage_schedules' %}" class="btn btn-secondary mr-2">Cancel</a>
+          <button type="submit" class="btn btn-success">Save Schedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

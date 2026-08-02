@@ -1,0 +1,96 @@
+{% extends "users/basic.html" %}
+
+{% block title %}{% if movie %}Edit {{ movie.title }}{% else %}Add Movie{% endif %} - Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <a href="{% url 'admin_manage_movies' %}" class="text-muted small">&laquo; Back to Movies</a>
+  <h2 class="mb-4">{% if movie %}Edit Movie: {{ movie.title }}{% else %}Add New Movie{% endif %}</h2>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row">
+          <div class="col-md-8">
+            <div class="form-group">
+              <label>Title *</label>
+              {{ form.title }}
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              {{ form.description }}
+            </div>
+            <div class="row">
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label>Duration (Minutes)</label>
+                  {{ form.duration_minutes }}
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label>Release Date</label>
+                  {{ form.release_date }}
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label>Status</label>
+                  {{ form.status }}
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>Age Certification</label>
+                  {{ form.age_certification }}
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>YouTube Trailer URL</label>
+                  {{ form.trailer_url }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4 border-left">
+            <div class="form-group">
+              <label>Movie Poster</label>
+              {% if movie and movie.poster %}
+                <div class="mb-2">
+                  <img src="{{ movie.poster.url }}" class="img-fluid rounded" style="max-height:160px;">
+                </div>
+              {% endif %}
+              {{ form.poster }}
+            </div>
+            <div class="form-group">
+              <label>Genres</label>
+              {{ form.genres }}
+              <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+            </div>
+            <div class="form-group">
+              <label>Languages</label>
+              {{ form.languages }}
+              <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+            </div>
+            <div class="form-group">
+              <label>Cast Members</label>
+              {{ form.cast }}
+              <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-top pt-3 text-right">
+          <a href="{% url 'admin_manage_movies' %}" class="btn btn-secondary mr-2">Cancel</a>
+          <button type="submit" class="btn btn-success">Save Movie</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

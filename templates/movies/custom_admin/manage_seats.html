@@ -7,12 +7,11 @@
   {% include 'movies/custom_admin/_admin_nav.html' %}
 
   <!-- Header -->
-
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
       <a href="{% url 'admin_dashboard' %}" class="text-muted small">&laquo; Back to Admin Dashboard</a>
-      <h2 class="mb-0"><i class="fas fa-chair text-danger mr-2"></i>Seat & Layout Management</h2>
-      <p class="text-muted mb-0">Control seat availability, manual reservations, maintenance status, and pricing tiers.</p>
+      <h2 class="mb-0"><i class="fas fa-chair text-danger mr-2"></i>Seat & Layout Management GUI</h2>
+      <p class="text-muted mb-0">Single-click GUI tool to toggle seats between Available 🟢 and Unavailable 🔴 with live capacity auto-sync.</p>
     </div>
   </div>
 
@@ -70,75 +69,85 @@
   </div>
 
   {% if selected_screen %}
-    <!-- Layman Summary Counter Cards -->
+    <!-- Summary Counter Cards -->
     <div class="row mb-4">
       <div class="col-md-3 col-6 mb-2">
         <div class="card bg-light border shadow-sm text-center py-2">
-          <h4 class="font-weight-bold mb-0">{{ total_count }}</h4>
+          <h4 class="font-weight-bold mb-0" id="stat-total">{{ total_count }}</h4>
           <small class="text-muted">Total Capacity</small>
         </div>
       </div>
       <div class="col-md-3 col-6 mb-2">
         <div class="card bg-success text-white shadow-sm text-center py-2">
-          <h4 class="font-weight-bold mb-0">&#128994; {{ available_count }}</h4>
+          <h4 class="font-weight-bold mb-0" id="stat-available">&#128994; {{ available_count }}</h4>
           <small>Available (Open)</small>
         </div>
       </div>
       <div class="col-md-3 col-6 mb-2">
         <div class="card bg-danger text-white shadow-sm text-center py-2">
-          <h4 class="font-weight-bold mb-0">&#128308; {{ booked_count }}</h4>
+          <h4 class="font-weight-bold mb-0" id="stat-booked">&#128308; {{ booked_count }}</h4>
           <small>Booked / Reserved</small>
         </div>
       </div>
       <div class="col-md-3 col-6 mb-2">
         <div class="card bg-warning text-dark shadow-sm text-center py-2">
-          <h4 class="font-weight-bold mb-0">&#128993; {{ maintenance_count }}</h4>
+          <h4 class="font-weight-bold mb-0" id="stat-maintenance">&#128993; {{ maintenance_count }}</h4>
           <small>Out of Service</small>
         </div>
       </div>
     </div>
 
-    <!-- Bulk Controls Bar -->
-    <div class="card mb-4 shadow-sm">
-      <div class="card-header bg-light d-flex justify-content-between align-items-center font-weight-bold">
-        <span><i class="fas fa-tools text-primary mr-2"></i>Quick Row & Layout Controls</span>
-        <form method="post" action="{% url 'admin_update_seat_status' %}" class="d-inline" onsubmit="return confirm('Reset all seats in this screen to Available?')">
-          {% csrf_token %}
-          <input type="hidden" name="action_type" value="reset_screen">
-          <input type="hidden" name="screen_id" value="{{ selected_screen.id }}">
-          {% if selected_schedule %}<input type="hidden" name="schedule_id" value="{{ selected_schedule.id }}">{% endif %}
-          <button type="submit" class="btn btn-sm btn-outline-danger">Reset All Seats to Available</button>
-        </form>
+    <!-- GUI Interactive Controls Bar -->
+    <div class="card mb-4 shadow-sm border-primary">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center font-weight-bold">
+        <span><i class="fas fa-hand-pointer mr-2"></i>GUI Click Mode Control</span>
+        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+          <label class="btn btn-sm btn-light active mr-1">
+            <input type="radio" name="clickMode" value="quick" checked> ⚡ 1-Click Instant Toggle (Available &#128994; &harr; Unavailable &#128308;)
+          </label>
+          <label class="btn btn-sm btn-light">
+            <input type="radio" name="clickMode" value="menu"> ⚙️ Popup Menu (Tiers & Actions)
+          </label>
+        </div>
       </div>
-      <div class="card-body">
-        <form method="post" action="{% url 'admin_update_seat_status' %}" class="form-inline">
+      <div class="card-body py-3">
+        <form method="post" action="{% url 'admin_update_seat_status' %}" class="form-inline justify-content-between">
           {% csrf_token %}
           <input type="hidden" name="action_type" value="bulk_row">
           <input type="hidden" name="screen_id" value="{{ selected_screen.id }}">
           {% if selected_schedule %}<input type="hidden" name="schedule_id" value="{{ selected_schedule.id }}">{% endif %}
 
-          <label class="mr-2 font-weight-bold">Apply to Entire Row:</label>
-          <select name="row_letter" class="form-control mr-2" required>
-            {% for row_name in row_groups.keys %}
-              <option value="{{ row_name }}">Row {{ row_name }}</option>
-            {% endfor %}
-          </select>
+          <div class="form-inline">
+            <label class="mr-2 font-weight-bold">Bulk Row Action:</label>
+            <select name="row_letter" class="form-control mr-2" required>
+              {% for row_name in row_groups.keys %}
+                <option value="{{ row_name }}">Row {{ row_name }}</option>
+              {% endfor %}
+            </select>
 
-          <label class="mr-2 font-weight-bold">Set Status:</label>
-          <select name="row_status" class="form-control mr-2" required>
-            <option value="available">&#128994; Mark All Available</option>
-            <option value="booked">&#128308; Mark All Booked / Reserved</option>
-            <option value="maintenance">&#128993; Mark All Out of Service</option>
-          </select>
+            <select name="row_status" class="form-control mr-2" required>
+              <option value="available">&#128994; Mark All Available</option>
+              <option value="booked">&#128308; Mark All Unavailable (Booked)</option>
+              <option value="maintenance">&#128993; Mark All Out of Service</option>
+            </select>
 
-          <button type="submit" class="btn btn-primary">Apply Row Action</button>
+            <button type="submit" class="btn btn-primary">Apply Row Action</button>
+          </div>
+
+          <button type="submit" name="action_type" value="reset_screen" class="btn btn-outline-danger" onclick="return confirm('Reset all seats in this screen to Available?')">
+            Reset All Seats to Available
+          </button>
         </form>
       </div>
     </div>
 
-    <!-- Visual Interactive Grid -->
-    <div class="card shadow-sm mb-4">
-      <div class="card-body text-center overflow-auto">
+    <!-- Visual Interactive Grid Layout -->
+    <div class="card shadow-sm mb-4"
+         id="seat-grid-container"
+         data-screen-id="{{ selected_screen.id }}"
+         data-schedule-id="{{ selected_schedule.id|default:'' }}"
+         data-toggle-url="{% url 'admin_toggle_seat_ajax' %}">
+      <div class="card-body text-center overflow-auto py-4">
         <div class="screen-arch mb-4">SCREEN THIS WAY</div>
 
         {% for row_name, row_seats in row_groups.items %}
@@ -146,18 +155,23 @@
             <span class="font-weight-bold text-muted mr-3" style="width: 25px;">{{ row_name }}</span>
             {% for s in row_seats %}
               <div class="dropdown d-inline-block">
-                <button class="btn btn-sm seat-item m-1
+                <button id="seat-btn-{{ s.id }}"
+                        class="btn btn-sm seat-item m-1
                                {% if s.display_status == 'maintenance' %}seat-maintenance
                                {% elif s.display_status == 'booked' %}seat-booked
                                {% else %}seat-available{% endif %}"
-                        type="button" data-toggle="dropdown" title="Seat {{ s.seat_number }} ({{ s.get_seat_type_display }}) - Click to manage">
+                        type="button"
+                        data-seat-id="{{ s.id }}"
+                        data-status="{{ s.display_status }}"
+                        onclick="handleSeatClick(event, this)"
+                        title="Seat {{ s.seat_number }} ({{ s.get_seat_type_display }}) - Click to toggle">
                   {{ s.number }}
                 </button>
-                <div class="dropdown-menu shadow">
+
+                <div class="dropdown-menu shadow" id="dropdown-menu-{{ s.id }}">
                   <h6 class="dropdown-header font-weight-bold">Seat {{ s.seat_number }}</h6>
                   <div class="dropdown-divider"></div>
 
-                  <!-- Status Actions -->
                   <form method="post" action="{% url 'admin_update_seat_status' %}">
                     {% csrf_token %}
                     <input type="hidden" name="action_type" value="single_seat">
@@ -166,10 +180,10 @@
                     <input type="hidden" name="seat_id" value="{{ s.id }}">
 
                     <button type="submit" name="status" value="available" class="dropdown-item text-success font-weight-bold">
-                      &#128994; Mark Available (Unbook)
+                      &#128994; Mark Available (Open)
                     </button>
                     <button type="submit" name="status" value="booked" class="dropdown-item text-danger font-weight-bold">
-                      &#128308; Mark Booked / Reserved
+                      &#128308; Mark Unavailable (Booked)
                     </button>
                     <button type="submit" name="status" value="maintenance" class="dropdown-item text-warning font-weight-bold">
                       &#128993; Out of Service (Maintenance)
@@ -196,6 +210,60 @@
 
 </div>
 
+<script>
+  function handleSeatClick(event, btnElement) {
+    var activeMode = document.querySelector('input[name="clickMode"]:checked');
+    var clickMode = activeMode ? activeMode.value : 'quick';
+    if (clickMode === 'quick') {
+      event.preventDefault();
+      event.stopPropagation();
+      var seatId = btnElement.getAttribute('data-seat-id');
+      toggleSeatAjax(seatId);
+    }
+  }
+
+
+  function toggleSeatAjax(seatId) {
+    var grid = document.getElementById('seat-grid-container');
+    var btn = document.getElementById('seat-btn-' + seatId);
+    var csrfToken = '{{ csrf_token }}';
+
+    var formData = new FormData();
+    formData.append('seat_id', seatId);
+    formData.append('screen_id', grid.dataset.screenId);
+    if (grid.dataset.scheduleId) {
+      formData.append('schedule_id', grid.dataset.scheduleId);
+    }
+
+    fetch(grid.dataset.toggleUrl, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken
+      },
+      body: formData
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+      if (data.success) {
+        btn.classList.remove('seat-available', 'seat-booked', 'seat-maintenance');
+        if (data.new_status === 'available') {
+          btn.classList.add('seat-available');
+        } else if (data.new_status === 'booked') {
+          btn.classList.add('seat-booked');
+        } else if (data.new_status === 'maintenance') {
+          btn.classList.add('seat-maintenance');
+        }
+        btn.setAttribute('data-status', data.new_status);
+
+        document.getElementById('stat-available').innerHTML = '&#128994; ' + data.available_count;
+        document.getElementById('stat-booked').innerHTML = '&#128308; ' + data.booked_count;
+        document.getElementById('stat-maintenance').innerHTML = '&#128993; ' + data.maintenance_count;
+      }
+    })
+    .catch(function(error) { console.error('Error toggling seat:', error); });
+  }
+</script>
+
 <style>
   .screen-arch {
     background: #343a40;
@@ -213,6 +281,11 @@
     font-weight: bold;
     border-radius: 6px;
     padding: 0;
+    transition: all 0.2s ease-in-out;
+  }
+  .seat-item:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
   }
   .seat-available { background-color: #28a745; color: white; border: 1px solid #1e7e34; }
   .seat-booked { background-color: #dc3545; color: white; border: 1px solid #bd2130; }

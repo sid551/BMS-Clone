@@ -2,6 +2,8 @@ from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import JsonResponse
+
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -935,6 +937,96 @@ def admin_movie_gallery(request, movie_id):
         'movie': movie,
         'images': movie.images.all(),
     })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_toggle_seat_ajax(request):
+    if request.method == 'POST':
+        seat_id = request.POST.get('seat_id')
+        screen_id = request.POST.get('screen_id')
+        schedule_id = request.POST.get('schedule_id')
+        target_status = request.POST.get('target_status')
+
+        screen = get_object_or_404(Screen, id=screen_id)
+        seat = get_object_or_404(Seat, id=seat_id, screen=screen)
+        schedule = ShowSchedule.objects.filter(id=schedule_id).first() if schedule_id else None
+
+        # Determine new status if not specified
+        if not target_status:
+            if not seat.is_active:
+                new_status = 'available'
+            elif seat.is_booked or (schedule and BookingSeat.objects.filter(show_schedule=schedule, seat=seat).exists()):
+                new_status = 'available'
+            else:
+                new_status = 'booked'
+        else:
+            new_status = target_status
+
+        if new_status == 'available':
+            seat.is_active = True
+            seat.is_booked = False
+            seat.save(update_fields=['is_active', 'is_booked'])
+            if schedule:
+                BookingSeat.objects.filter(show_schedule=schedule, seat=seat).delete()
+
+        elif new_status == 'booked':
+            seat.is_active = True
+            seat.is_booked = True
+            seat.save(update_fields=['is_active', 'is_booked'])
+            if schedule:
+                admin_booking, _ = Booking.objects.get_or_create(
+                    user=request.user,
+                    show_schedule=schedule,
+                    status='confirmed',
+                    defaults={'number_of_seats': 1, 'total_price': schedule.price, 'movie': schedule.movie, 'theater': schedule.theater}
+                )
+                BookingSeat.objects.get_or_create(
+                    booking=admin_booking,
+                    show_schedule=schedule,
+                    seat=seat,
+                    defaults={'price': seat.calculate_price(schedule.price)}
+                )
+
+        elif new_status == 'maintenance':
+            seat.is_active = False
+            seat.save(update_fields=['is_active'])
+
+        # Recalculate schedule capacity and overall stats
+        schedule_available_seats = 0
+        if schedule:
+            booked_count = BookingSeat.objects.filter(show_schedule=schedule).count()
+            active_count = screen.seats.filter(is_active=True).count()
+            schedule.available_seats = max(0, active_count - booked_count)
+            schedule.save(update_fields=['available_seats'])
+            schedule_available_seats = schedule.available_seats
+
+        # Calculate counts
+        seats = screen.seats.all()
+        booked_seat_ids = set()
+        if schedule:
+            booked_seat_ids = set(BookingSeat.objects.filter(show_schedule=schedule).values_list('seat_id', flat=True))
+        else:
+            booked_seat_ids = set(seats.filter(is_booked=True).values_list('id', flat=True))
+
+        total_count = seats.count()
+        maintenance_count = seats.filter(is_active=False).count()
+        booked_count = sum(1 for s in seats if s.is_active and (s.id in booked_seat_ids or s.is_booked))
+        available_count = total_count - maintenance_count - booked_count
+
+        return JsonResponse({
+            'success': True,
+            'seat_id': seat.id,
+            'new_status': new_status,
+            'seat_number': seat.seat_number,
+            'total_count': total_count,
+            'available_count': available_count,
+            'booked_count': booked_count,
+            'maintenance_count': maintenance_count,
+            'schedule_available_seats': schedule_available_seats,
+        })
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method.'}, status=400)
+
 
 
 

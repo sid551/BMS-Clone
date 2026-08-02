@@ -36,7 +36,9 @@ urlpatterns = [
     path('manage/bookings/<int:booking_id>/action/', views.admin_booking_action, name='admin_booking_action'),
     path('manage/seats/', views.admin_manage_seats, name='admin_manage_seats'),
     path('manage/seats/update/', views.admin_update_seat_status, name='admin_update_seat_status'),
+    path('manage/seats/toggle-ajax/', views.admin_toggle_seat_ajax, name='admin_toggle_seat_ajax'),
 ]
+
 
 
 

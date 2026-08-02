@@ -431,6 +431,53 @@ class MovieManagementTestCase(TestCase):
         self.assertIsNotNone(created_schedule)
         self.assertEqual(created_schedule.available_seats, 50)
 
+    def test_admin_toggle_seat_ajax(self):
+        from .models import Screen, Seat, ShowSchedule
+
+        screen = Screen.objects.create(
+            theater=self.theater,
+            name='Screen GUI Test',
+            screen_type='3D',
+            total_rows=4,
+            seats_per_row=5
+        )
+        screen.generate_seats()
+        schedule = ShowSchedule.objects.create(
+            movie=self.movie1,
+            theater=self.theater,
+            screen=screen,
+            show_time=timezone.now() + timedelta(days=12),
+            price=200.00
+        )
+
+        self.client.login(username='admin', password='adminpassword')
+        sample_seat = screen.seats.first()
+
+        # Toggle Available -> Booked via GUI AJAX
+        resp = self.client.post(reverse('admin_toggle_seat_ajax'), {
+            'seat_id': sample_seat.id,
+            'screen_id': screen.id,
+            'schedule_id': schedule.id
+        })
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['new_status'], 'booked')
+        self.assertEqual(data['schedule_available_seats'], 19)
+
+        # Toggle Booked -> Available via GUI AJAX
+        resp2 = self.client.post(reverse('admin_toggle_seat_ajax'), {
+            'seat_id': sample_seat.id,
+            'screen_id': screen.id,
+            'schedule_id': schedule.id
+        })
+        self.assertEqual(resp2.status_code, 200)
+        data2 = resp2.json()
+        self.assertTrue(data2['success'])
+        self.assertEqual(data2['new_status'], 'available')
+        self.assertEqual(data2['schedule_available_seats'], 20)
+
+
 
 
 

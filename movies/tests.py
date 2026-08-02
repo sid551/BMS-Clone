@@ -400,5 +400,37 @@ class MovieManagementTestCase(TestCase):
         booking.refresh_from_db()
         self.assertEqual(booking.status, 'confirmed')
 
+    def test_blank_available_seats_auto_sync(self):
+        from .models import Screen, ShowSchedule
+
+        screen = Screen.objects.create(
+            theater=self.theater,
+            name='Screen Blank Test',
+            screen_type='2D',
+            total_rows=5,
+            seats_per_row=10
+        )
+        screen.generate_seats()
+        self.assertEqual(screen.total_seats, 50)
+
+        self.client.login(username='admin', password='adminpassword')
+
+        # Test POSTing schedule with available_seats left BLANK ('')
+        post_data = {
+            'movie': self.movie1.id,
+            'theater': self.theater.id,
+            'screen': screen.id,
+            'show_time': (timezone.now() + timedelta(days=10)).strftime('%Y-%m-%dT%H:%M'),
+            'price': '250.00',
+            'available_seats': ''  # LEFT BLANK BY USER
+        }
+        resp = self.client.post(reverse('admin_schedule_add'), post_data)
+        self.assertEqual(resp.status_code, 302)
+
+        created_schedule = ShowSchedule.objects.filter(screen=screen).first()
+        self.assertIsNotNone(created_schedule)
+        self.assertEqual(created_schedule.available_seats, 50)
+
+
 
 

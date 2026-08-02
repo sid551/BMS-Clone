@@ -130,6 +130,12 @@ class ShowScheduleForm(forms.ModelForm):
 
 
 
+    def clean_available_seats(self):
+        seats = self.cleaned_data.get('available_seats')
+        if seats is None or seats == '':
+            return 0
+        return seats
+
     def clean(self):
         cleaned_data = super().clean()
         screen = cleaned_data.get('screen')
@@ -146,9 +152,13 @@ class ShowScheduleForm(forms.ModelForm):
         elif theater:
             max_capacity = theater.total_seats
 
-        if available_seats and max_capacity > 0 and available_seats > max_capacity:
+        if not available_seats or available_seats == 0:
             cleaned_data['available_seats'] = max_capacity
+        elif max_capacity > 0 and available_seats > max_capacity:
+            cleaned_data['available_seats'] = max_capacity
+
         return cleaned_data
+
 
 
 

@@ -285,7 +285,9 @@ class ShowSchedule(models.Model):
     def clean(self):
         super().clean()
         max_cap = self.get_max_capacity()
-        if max_cap > 0 and self.available_seats > max_cap:
+        if not self.available_seats or self.available_seats == 0:
+            self.available_seats = max_cap if max_cap > 0 else 0
+        elif max_cap > 0 and self.available_seats > max_cap:
             self.available_seats = max_cap
 
     def save(self, *args, **kwargs):
@@ -295,12 +297,13 @@ class ShowSchedule(models.Model):
 
         # Enforce max capacity cap
         max_cap = self.get_max_capacity()
-        if (not self.available_seats or self.available_seats == 0) and max_cap > 0:
-            self.available_seats = max_cap
+        if not self.available_seats or self.available_seats == 0:
+            self.available_seats = max_cap if max_cap > 0 else 0
         elif max_cap > 0 and self.available_seats > max_cap:
             self.available_seats = max_cap
 
         super().save(*args, **kwargs)
+
 
 
 

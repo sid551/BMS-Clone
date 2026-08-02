@@ -356,13 +356,15 @@ class Booking(models.Model):
         if not self.booking_reference:
             self.booking_reference = f'BMS{uuid.uuid4().hex[:12].upper()}'
 
-        # Calculate total price only when show_schedule exists
+        # Calculate total price only when show_schedule exists and total_price is not set
         if self.show_schedule_id:
-            self.total_price = self.show_schedule.price * self.number_of_seats
+            if not self.total_price:
+                self.total_price = self.show_schedule.price * self.number_of_seats
             self.movie = self.show_schedule.movie
             self.theater = self.show_schedule.theater
         elif not self.total_price:
             self.total_price = 0
+
 
         self.full_clean()
         super().save(*args, **kwargs)

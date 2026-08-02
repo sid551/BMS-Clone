@@ -164,7 +164,7 @@
                       <td>
                         {% if user.is_authenticated %}
                           {% if s.available_seats > 0 %}
-                            <a href="{% url 'book_seats' s.theater.id %}" class="btn btn-primary btn-sm">Book Now</a>
+                            <a href="{% url 'book_seats' s.theater.id %}?schedule_id={{ s.id }}" class="btn btn-primary btn-sm">Book Now</a>
                           {% else %}
                             <button class="btn btn-secondary btn-sm" disabled>Housefull</button>
                           {% endif %}

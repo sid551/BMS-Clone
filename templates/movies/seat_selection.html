@@ -1,6 +1,8 @@
 {% extends "users/basic.html" %}
+{% load movie_tags %}
 
 {% block title %}Select Seats - {{ schedule.movie.title|default:theaters.name }}{% endblock %}
+
 
 {% block content %}
 <div class="container py-4">

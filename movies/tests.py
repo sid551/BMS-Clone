@@ -209,3 +209,62 @@ class MovieManagementTestCase(TestCase):
         resp = self.client.get(reverse('admin_dashboard'))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Movie Management Admin Panel')
+
+    def test_screen_and_seat_management_system(self):
+        from .models import Screen, Seat, BookingSeat
+
+        # Create Screen
+        screen = Screen.objects.create(
+            theater=self.theater,
+            name='Screen 1 - IMAX',
+            screen_type='IMAX_3D',
+            total_rows=8,
+            seats_per_row=10
+        )
+        self.assertEqual(screen.total_seats, 80)
+
+        # Auto-generate seat layout
+        screen.generate_seats()
+        self.assertEqual(screen.seats.count(), 80)
+
+        # Verify Tiers
+        recliner_seats = screen.seats.filter(seat_type='recliner')
+        premium_seats = screen.seats.filter(seat_type='premium')
+        regular_seats = screen.seats.filter(seat_type='regular')
+
+        self.assertGreater(recliner_seats.count(), 0)
+        self.assertGreater(premium_seats.count(), 0)
+        self.assertGreater(regular_seats.count(), 0)
+
+        # Verify Pricing Multiplier
+        sample_recliner = recliner_seats.first()
+        self.assertEqual(sample_recliner.calculate_price(200.00), 300.00)
+
+        # Test booking seats via view
+        schedule = ShowSchedule.objects.create(
+            movie=self.movie1,
+            theater=self.theater,
+            screen=screen,
+            show_time=timezone.now() + timedelta(days=3),
+            price=200.00,
+            available_seats=80
+        )
+
+        self.client.login(username='john', password='password123')
+        seat_ids = [sample_recliner.id]
+        resp = self.client.post(
+            f"{reverse('book_seats', args=[self.theater.id])}?schedule_id={schedule.id}",
+            {'seats': seat_ids}
+        )
+        self.assertEqual(resp.status_code, 302)
+
+        schedule.refresh_from_db()
+        self.assertEqual(schedule.available_seats, 79)
+        self.assertTrue(BookingSeat.objects.filter(show_schedule=schedule, seat=sample_recliner).exists())
+
+        # Test Staff Screen Admin view
+        self.client.login(username='admin', password='adminpassword')
+        map_resp = self.client.get(reverse('admin_screen_seat_map', args=[screen.id]))
+        self.assertEqual(map_resp.status_code, 200)
+        self.assertContains(map_resp, 'Screen 1 - IMAX')
+

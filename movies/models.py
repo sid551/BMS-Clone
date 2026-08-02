@@ -168,15 +168,83 @@ class Theater(models.Model):
         ordering = ['name']
 
 
+class Screen(models.Model):
+    SCREEN_TYPES = [
+        ('2D', 'Standard 2D'),
+        ('3D', '3D Screen'),
+        ('IMAX_3D', 'IMAX 3D'),
+        ('4DX', '4DX Motion'),
+        ('DOLBY', 'Dolby Atmos'),
+    ]
+
+    theater = models.ForeignKey(Theater, on_delete=models.CASCADE, related_name='screens')
+    name = models.CharField(max_length=100, help_text='e.g. Screen 1, Audi 2 - IMAX')
+    screen_type = models.CharField(max_length=20, choices=SCREEN_TYPES, default='2D')
+    total_rows = models.PositiveIntegerField(default=8, help_text='Number of rows (e.g. 8 for A-H)')
+    seats_per_row = models.PositiveIntegerField(default=10, help_text='Seats per row (e.g. 10)')
+
+    def __str__(self):
+        return f'{self.theater.name} - {self.name} ({self.get_screen_type_display()})'
+
+    @property
+    def total_seats(self):
+        return self.total_rows * self.seats_per_row
+
+    def generate_seats(self):
+        """Auto-generate seat layout grid for this screen if not present."""
+        if self.seats.exists():
+            return
+        import string
+        rows = list(string.ascii_uppercase[:min(self.total_rows, 26)])
+        seats_to_create = []
+
+        for row_idx, row_name in enumerate(rows):
+            # Tiers: Top 25% Recliner, Middle 50% Premium, Front 25% Regular
+            if row_idx < max(1, int(len(rows) * 0.25)):
+                seat_type = 'recliner'
+                multiplier = 1.50
+            elif row_idx < int(len(rows) * 0.75):
+                seat_type = 'premium'
+                multiplier = 1.20
+            else:
+                seat_type = 'regular'
+                multiplier = 1.00
+
+            for num in range(1, self.seats_per_row + 1):
+                seat_num_str = f'{row_name}{num}'
+                seats_to_create.append(Seat(
+                    screen=self,
+                    theater=self.theater,
+                    row=row_name,
+                    number=num,
+                    seat_number=seat_num_str,
+                    seat_type=seat_type,
+                    price_multiplier=multiplier,
+                    is_active=True
+                ))
+        Seat.objects.bulk_create(seats_to_create)
+
+    class Meta:
+        ordering = ['name']
+
+
 class ShowSchedule(models.Model):
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='schedules')
     theater = models.ForeignKey(Theater, on_delete=models.CASCADE, related_name='schedules')
+    screen = models.ForeignKey(Screen, on_delete=models.CASCADE, related_name='schedules', null=True, blank=True)
     show_time = models.DateTimeField()
     price = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
     available_seats = models.PositiveIntegerField(default=0)
 
+    def save(self, *args, **kwargs):
+        # Sync theater from screen if screen is set
+        if self.screen and not self.theater_id:
+            self.theater = self.screen.theater
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f'{self.movie.title} @ {self.theater.name} — {self.show_time}'
+        screen_str = f' [{self.screen.name}]' if self.screen else ''
+        return f'{self.movie.title} @ {self.theater.name}{screen_str} — {self.show_time}'
 
     class Meta:
         ordering = ['show_time']
@@ -184,16 +252,47 @@ class ShowSchedule(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# Seat (legacy - kept for backward compatibility)
+# Seat & Layout System
 # ---------------------------------------------------------------------------
 
 class Seat(models.Model):
+    SEAT_TYPES = [
+        ('regular', 'Executive / Regular'),
+        ('premium', 'Premium'),
+        ('recliner', 'Recliner / VIP'),
+    ]
+
     theater = models.ForeignKey(Theater, on_delete=models.CASCADE, related_name='seats')
+    screen = models.ForeignKey(Screen, on_delete=models.CASCADE, related_name='seats', null=True, blank=True)
+    row = models.CharField(max_length=5, blank=True, default='A')
+    number = models.PositiveIntegerField(default=1)
     seat_number = models.CharField(max_length=10)
+    seat_type = models.CharField(max_length=20, choices=SEAT_TYPES, default='regular')
+    price_multiplier = models.DecimalField(max_digits=4, decimal_places=2, default=1.00)
     is_booked = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True, help_text='Set false for broken/maintenance seats')
+
+    def calculate_price(self, base_price):
+        """Calculate seat price based on schedule base price and multiplier."""
+        return round(float(base_price) * float(self.price_multiplier), 2)
 
     def __str__(self):
-        return f'{self.seat_number} in {self.theater.name}'
+        screen_info = f' [{self.screen.name}]' if self.screen else ''
+        return f'{self.seat_number} ({self.get_seat_type_display()}){screen_info} - {self.theater.name}'
+
+
+class BookingSeat(models.Model):
+    booking = models.ForeignKey('Booking', on_delete=models.CASCADE, related_name='booked_seats')
+    show_schedule = models.ForeignKey(ShowSchedule, on_delete=models.CASCADE, related_name='booked_seats')
+    seat = models.ForeignKey(Seat, on_delete=models.CASCADE, related_name='show_bookings')
+    price = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
+
+    class Meta:
+        unique_together = ('show_schedule', 'seat')
+
+    def __str__(self):
+        return f'{self.seat.seat_number} for Schedule #{self.show_schedule_id}'
+
 
 
 # ---------------------------------------------------------------------------

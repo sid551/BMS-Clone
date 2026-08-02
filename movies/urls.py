@@ -24,4 +24,10 @@ urlpatterns = [
     path('manage/reports/', views.admin_manage_reports, name='admin_manage_reports'),
     path('manage/reports/<int:report_id>/resolve/', views.admin_resolve_report, name='admin_resolve_report'),
     path('manage/taxonomies/', views.admin_manage_taxonomies, name='admin_manage_taxonomies'),
-]
+    path('manage/screens/', views.admin_manage_screens, name='admin_manage_screens'),
+    path('manage/screens/add/', views.admin_screen_form, name='admin_screen_add'),
+    path('manage/screens/<int:screen_id>/edit/', views.admin_screen_form, name='admin_screen_edit'),
+    path('manage/screens/<int:screen_id>/delete/', views.admin_screen_delete, name='admin_screen_delete'),
+    path('manage/screens/<int:screen_id>/seat-map/', views.admin_screen_seat_map, name='admin_screen_seat_map'),
+]
+

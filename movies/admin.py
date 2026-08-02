@@ -83,22 +83,48 @@ class MovieImageAdmin(admin.ModelAdmin):
     search_fields = ['movie__title', 'caption']
 
 
-# ---------------------------------------------------------------------------
-# Theater & ShowSchedule
-# ---------------------------------------------------------------------------
+from .models import (
+    Genre, Language, CastMember,
+    Movie, MovieImage,
+    Theater, Screen, ShowSchedule,
+    Seat, Booking, BookingSeat, Review, ReportedReview,
+)
+
+
+class ScreenInline(admin.TabularInline):
+    model = Screen
+    extra = 1
+    fields = ['name', 'screen_type', 'total_rows', 'seats_per_row']
+
 
 @admin.register(Theater)
 class TheaterAdmin(admin.ModelAdmin):
     list_display = ['name', 'location', 'total_seats']
     search_fields = ['name', 'location']
-    inlines = [SeatInline]
+    inlines = [ScreenInline, SeatInline]
+
+
+@admin.register(Screen)
+class ScreenAdmin(admin.ModelAdmin):
+    list_display = ['name', 'theater', 'screen_type', 'total_rows', 'seats_per_row', 'total_seats']
+    list_filter = ['screen_type', 'theater']
+    search_fields = ['name', 'theater__name']
+    actions = ['generate_screen_seats']
+
+    def generate_screen_seats(self, request, queryset):
+        count = 0
+        for screen in queryset:
+            screen.generate_seats()
+            count += 1
+        self.message_user(request, f'Seat grids generated for {count} screen(s).')
+    generate_screen_seats.short_description = 'Generate seat layout grid'
 
 
 @admin.register(ShowSchedule)
 class ShowScheduleAdmin(admin.ModelAdmin):
-    list_display = ['movie', 'theater', 'show_time', 'price', 'available_seats']
-    list_filter = ['theater', 'movie']
-    search_fields = ['movie__title', 'theater__name']
+    list_display = ['movie', 'theater', 'screen', 'show_time', 'price', 'available_seats']
+    list_filter = ['theater', 'screen', 'movie']
+    search_fields = ['movie__title', 'theater__name', 'screen__name']
 
 
 # ---------------------------------------------------------------------------
@@ -107,8 +133,17 @@ class ShowScheduleAdmin(admin.ModelAdmin):
 
 @admin.register(Seat)
 class SeatAdmin(admin.ModelAdmin):
-    list_display = ['seat_number', 'theater', 'is_booked']
-    list_filter = ['is_booked', 'theater']
+    list_display = ['seat_number', 'theater', 'screen', 'seat_type', 'price_multiplier', 'is_active', 'is_booked']
+    list_filter = ['seat_type', 'is_active', 'is_booked', 'theater', 'screen']
+    search_fields = ['seat_number', 'theater__name', 'screen__name']
+
+
+@admin.register(BookingSeat)
+class BookingSeatAdmin(admin.ModelAdmin):
+    list_display = ['booking', 'show_schedule', 'seat', 'price']
+    list_filter = ['show_schedule__movie', 'show_schedule__theater']
+    search_fields = ['booking__booking_reference', 'seat__seat_number']
+
 
 
 # ---------------------------------------------------------------------------

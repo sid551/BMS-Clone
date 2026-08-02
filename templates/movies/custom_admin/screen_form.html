@@ -1,0 +1,52 @@
+{% extends "users/basic.html" %}
+
+{% block title %}{% if screen %}Edit Screen{% else %}Add Screen{% endif %} - Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <a href="{% url 'admin_manage_screens' %}" class="text-muted small">&laquo; Back to Screens</a>
+  <h2 class="mb-4">{% if screen %}Edit Screen: {{ screen.name }}{% else %}Add New Theater Screen{% endif %}</h2>
+
+  <div class="card shadow-sm" style="max-width: 600px;">
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+          <label>Theater *</label>
+          {{ form.theater }}
+        </div>
+        <div class="form-group">
+          <label>Screen Name *</label>
+          {{ form.name }}
+          <small class="text-muted">e.g. Screen 1, Audi 2 - IMAX, Gold Screen</small>
+        </div>
+        <div class="form-group">
+          <label>Screen Technology Type *</label>
+          {{ form.screen_type }}
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label>Total Rows *</label>
+              {{ form.total_rows }}
+              <small class="text-muted">Rows named A, B, C...</small>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label>Seats Per Row *</label>
+              {{ form.seats_per_row }}
+              <small class="text-muted">Numbered 1..N</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-top pt-3 text-right">
+          <a href="{% url 'admin_manage_screens' %}" class="btn btn-secondary mr-2">Cancel</a>
+          <button type="submit" class="btn btn-success">Save Screen & Generate Grid</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

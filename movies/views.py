@@ -40,85 +40,136 @@ def theater_list(request, movie_id):
 @login_required(login_url='/login/')
 def book_seats(request, theater_id):
     theater = get_object_or_404(Theater, id=theater_id)
-    seats = Seat.objects.filter(theater=theater)
+    schedule_id = request.GET.get('schedule_id')
 
-    # Try to find a ShowSchedule for this theater
-    schedule = ShowSchedule.objects.filter(theater=theater).first()
+    if schedule_id:
+        schedule = get_object_or_404(ShowSchedule, id=schedule_id, theater=theater)
+    else:
+        schedule = ShowSchedule.objects.filter(theater=theater, show_time__gte=timezone.now()).first()
+
+    screen = schedule.screen if schedule and schedule.screen else theater.screens.first()
+
+    if screen:
+        screen.generate_seats()
+        all_seats = Seat.objects.filter(screen=screen, is_active=True).order_by('row', 'number')
+    else:
+        all_seats = Seat.objects.filter(theater=theater, is_active=True).order_by('seat_number')
+
+    # Get already booked seat IDs for this specific schedule
+    booked_seat_ids = set()
+    if schedule:
+        booked_seat_ids = set(
+            BookingSeat.objects.filter(show_schedule=schedule)
+            .values_list('seat_id', flat=True)
+        )
+    else:
+        booked_seat_ids = set(Seat.objects.filter(theater=theater, is_booked=True).values_list('id', flat=True))
+
+    # Base ticket price
+    base_price = schedule.price if schedule else 200.00
+
+    # Group seats by tier and row for layout rendering
+    tier_groups = {'recliner': {}, 'premium': {}, 'regular': {}}
+    tier_prices = {}
+
+    for s in all_seats:
+        s.is_already_booked = s.id in booked_seat_ids
+        s.calculated_price = round(float(base_price) * float(s.price_multiplier), 2)
+        tier_prices[s.seat_type] = s.calculated_price
+
+        tier = s.seat_type if s.seat_type in tier_groups else 'regular'
+        row_dict = tier_groups[tier]
+        row_dict.setdefault(s.row, []).append(s)
 
     if request.method == 'POST':
-        selected_seats = request.POST.getlist('seats')
+        selected_seat_ids = [int(sid) for sid in request.POST.getlist('seats') if sid.isdigit()]
 
-        if not selected_seats:
+        if not selected_seat_ids:
             return render(request, 'movies/seat_selection.html', {
                 'theaters': theater,
-                'seats': seats,
-                'error': 'No seat selected.',
+                'schedule': schedule,
+                'screen': screen,
+                'tier_groups': tier_groups,
+                'tier_prices': tier_prices,
+                'error': 'Please select at least one seat to proceed.',
             })
 
-        # --- New booking flow: use ShowSchedule ---
-        if schedule:
-            number_of_seats = len(selected_seats)
+        # Validate available seats
+        number_of_seats = len(selected_seat_ids)
 
-            # Check available seats BEFORE creating the booking
-            if number_of_seats > schedule.available_seats:
-                return render(request, 'movies/seat_selection.html', {
-                    'theaters': theater,
-                    'seats': seats,
-                    'schedule': schedule,
-                    'error': f'Not enough seats available. Only {schedule.available_seats} seat{"s" if schedule.available_seats != 1 else ""} left.',
-                })
-            booking = Booking(
+        if schedule and number_of_seats > schedule.available_seats:
+            return render(request, 'movies/seat_selection.html', {
+                'theaters': theater,
+                'schedule': schedule,
+                'screen': screen,
+                'tier_groups': tier_groups,
+                'tier_prices': tier_prices,
+                'error': f'Not enough seats available. Only {schedule.available_seats} left.',
+            })
+
+        # Ensure none of selected seats are already booked
+        already_booked = set(selected_seat_ids) & booked_seat_ids
+        if already_booked:
+            return render(request, 'movies/seat_selection.html', {
+                'theaters': theater,
+                'schedule': schedule,
+                'screen': screen,
+                'tier_groups': tier_groups,
+                'tier_prices': tier_prices,
+                'error': 'One or more of your selected seats were just booked by another user. Please choose available seats.',
+            })
+
+        # Calculate exact total price per selected seat
+        chosen_seats = Seat.objects.filter(id__in=selected_seat_ids)
+        total_calculated_price = sum(s.calculate_price(base_price) for s in chosen_seats)
+
+        from django.db import transaction
+        with transaction.atomic():
+            booking = Booking.objects.create(
                 user=request.user,
                 show_schedule=schedule,
                 number_of_seats=number_of_seats,
-                status='pending',
-            )
-            try:
-                booking.save()
-                booking.confirm_booking()
-                # Mark individual seats as booked
-                Seat.objects.filter(id__in=selected_seats).update(is_booked=True)
-                messages.success(request, f'Booking confirmed! Reference: {booking.booking_reference}')
-                return redirect('profile')
-            except ValidationError as e:
-                return render(request, 'movies/seat_selection.html', {
-                    'theaters': theater,
-                    'seats': seats,
-                    'error': str(e.message if hasattr(e, 'message') else e),
-                })
-
-        # --- Legacy booking flow: no ShowSchedule ---
-        error_seats = []
-        for seat_id in selected_seats:
-            seat = get_object_or_404(Seat, id=seat_id, theater=theater)
-            if seat.is_booked:
-                error_seats.append(seat.seat_number)
-                continue
-            Booking.objects.create(
-                user=request.user,
-                seat=seat,
-                movie=theater.movie,
+                total_price=total_calculated_price,
+                status='confirmed',
+                movie=schedule.movie if schedule else theater.movie,
                 theater=theater,
-                number_of_seats=1,
-                show_schedule=None,
             )
-            seat.is_booked = True
-            seat.save()
 
-        if error_seats:
-            return render(request, 'movies/seat_selection.html', {
-                'theaters': theater,
-                'seats': seats,
-                'error': f'Already booked: {", ".join(error_seats)}',
-            })
+            # Record BookingSeats
+            booking_seats_to_create = []
+            for s in chosen_seats:
+                booking_seats_to_create.append(BookingSeat(
+                    booking=booking,
+                    show_schedule=schedule,
+                    seat=s,
+                    price=s.calculate_price(base_price)
+                ))
+            if booking_seats_to_create:
+                BookingSeat.objects.bulk_create(booking_seats_to_create)
 
+            # Update schedule available seats
+            if schedule:
+                schedule.available_seats = max(0, schedule.available_seats - number_of_seats)
+                schedule.save(update_fields=['available_seats'])
+
+            # Mark seat as booked globally for fallback
+            chosen_seats.update(is_booked=True)
+
+        messages.success(
+            request,
+            f'Booking confirmed! Reference: {booking.booking_reference}. Seats: {", ".join(s.seat_number for s in chosen_seats)}'
+        )
         return redirect('profile')
 
     return render(request, 'movies/seat_selection.html', {
         'theaters': theater,
-        'seats': seats,
         'schedule': schedule,
+        'screen': screen,
+        'tier_groups': tier_groups,
+        'tier_prices': tier_prices,
+        'seats': all_seats,
     })
+
 
 
 @login_required(login_url='/login/')
@@ -500,4 +551,83 @@ def admin_manage_taxonomies(request):
         'cast_form': cast_form,
         'theater_form': theater_form,
     })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_manage_screens(request):
+    screens = Screen.objects.select_related('theater').prefetch_related('seats').all()
+    return render(request, 'movies/custom_admin/manage_screens.html', {
+        'screens': screens,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_screen_form(request, screen_id=None):
+    screen = get_object_or_404(Screen, id=screen_id) if screen_id else None
+    if request.method == 'POST':
+        form = ScreenForm(request.POST, instance=screen)
+        if form.is_valid():
+            saved_screen = form.save()
+            saved_screen.generate_seats()
+            messages.success(request, f'Screen "{saved_screen.name}" saved and seat grid generated ({saved_screen.total_seats} seats).')
+            return redirect('admin_manage_screens')
+    else:
+        form = ScreenForm(instance=screen)
+
+    return render(request, 'movies/custom_admin/screen_form.html', {
+        'form': form,
+        'screen': screen,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_screen_delete(request, screen_id):
+    screen = get_object_or_404(Screen, id=screen_id)
+    if request.method == 'POST':
+        name = screen.name
+        screen.delete()
+        messages.success(request, f'Screen "{name}" deleted.')
+        return redirect('admin_manage_screens')
+    return render(request, 'movies/custom_admin/confirm_delete.html', {
+        'object': screen,
+        'type': 'Screen',
+        'cancel_url': 'admin_manage_screens'
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_screen_seat_map(request, screen_id):
+    screen = get_object_or_404(Screen, id=screen_id)
+    screen.generate_seats()
+
+    if request.method == 'POST':
+        seat_id = request.POST.get('seat_id')
+        action = request.POST.get('action')
+        seat = get_object_or_404(Seat, id=seat_id, screen=screen)
+
+        if action == 'toggle_active':
+            seat.is_active = not seat.is_active
+            seat.save(update_fields=['is_active'])
+            messages.success(request, f'Seat {seat.seat_number} maintenance status toggled.')
+        elif action == 'change_tier':
+            new_tier = request.POST.get('seat_type')
+            if new_tier in ['regular', 'premium', 'recliner']:
+                seat.seat_type = new_tier
+                mult_map = {'regular': 1.00, 'premium': 1.20, 'recliner': 1.50}
+                seat.price_multiplier = mult_map[new_tier]
+                seat.save(update_fields=['seat_type', 'price_multiplier'])
+                messages.success(request, f'Seat {seat.seat_number} tier changed to {seat.get_seat_type_display()}.')
+
+        return redirect('admin_screen_seat_map', screen_id=screen.id)
+
+    seats = screen.seats.all().order_by('row', 'number')
+    row_groups = {}
+    for s in seats:
+        row_groups.setdefault(s.row, []).append(s)
+
+    return render(request, 'movies/custom_admin/screen_seat_map.html', {
+        'screen': screen,
+        'row_groups': row_groups,
+    })
+
 

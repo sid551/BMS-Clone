@@ -73,3 +73,12 @@ def render_stars(rating):
             stars += '<span class="text-muted">&#9734;</span>'
     return mark_safe(stars)
 
+
+@register.filter
+def get_item(dictionary, key):
+    """Safely get value from dictionary by key in template."""
+    if isinstance(dictionary, dict):
+        return dictionary.get(key)
+    return None
+
+

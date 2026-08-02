@@ -1,0 +1,95 @@
+{% extends "users/basic.html" %}
+
+{% block title %}{{ screen.name }} Seat Grid - Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <a href="{% url 'admin_manage_screens' %}" class="text-muted small">&laquo; Back to Screens</a>
+      <h2 class="mb-0">{{ screen.theater.name }} — {{ screen.name }} Seat Grid</h2>
+      <p class="text-muted mb-0">Total {{ screen.total_seats }} Seats ({{ screen.total_rows }} Rows &times; {{ screen.seats_per_row }} Columns)</p>
+    </div>
+  </div>
+
+  {% for message in messages %}
+    <div class="alert alert-info alert-dismissible fade show">
+      {{ message }}
+      <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+    </div>
+  {% endfor %}
+
+  <!-- Legend -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body py-2">
+      <div class="d-flex justify-content-around flex-wrap align-items-center">
+        <div><span class="badge badge-warning p-2 mr-1">Recliner / VIP (1.5x)</span></div>
+        <div><span class="badge badge-primary p-2 mr-1">Premium (1.2x)</span></div>
+        <div><span class="badge badge-secondary p-2 mr-1">Regular (1.0x)</span></div>
+        <div><span class="badge badge-danger p-2">Maintenance / Inactive</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body text-center overflow-auto">
+      <div class="screen-box mb-4">SCREEN THIS WAY</div>
+
+      {% for row_name, row_seats in row_groups.items %}
+        <div class="d-flex justify-content-center align-items-center mb-2">
+          <span class="font-weight-bold text-muted mr-3" style="width: 25px;">{{ row_name }}</span>
+          {% for s in row_seats %}
+            <div class="dropdown d-inline-block">
+              <button class="btn btn-sm seat-btn m-1 {% if not s.is_active %}btn-danger{% elif s.seat_type == 'recliner' %}btn-warning text-dark{% elif s.seat_type == 'premium' %}btn-primary{% else %}btn-secondary{% endif %}"
+                      type="button" data-toggle="dropdown">
+                {{ s.number }}
+              </button>
+              <div class="dropdown-menu shadow">
+                <h6 class="dropdown-header">Seat {{ s.seat_number }} ({{ s.get_seat_type_display }})</h6>
+                <form method="post" action="{% url 'admin_screen_seat_map' screen.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="seat_id" value="{{ s.id }}">
+                  <input type="hidden" name="action" value="change_tier">
+                  <button type="submit" name="seat_type" value="recliner" class="dropdown-item">Set as Recliner (1.5x)</button>
+                  <button type="submit" name="seat_type" value="premium" class="dropdown-item">Set as Premium (1.2x)</button>
+                  <button type="submit" name="seat_type" value="regular" class="dropdown-item">Set as Regular (1.0x)</button>
+                </form>
+                <div class="dropdown-divider"></div>
+                <form method="post" action="{% url 'admin_screen_seat_map' screen.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="seat_id" value="{{ s.id }}">
+                  <input type="hidden" name="action" value="toggle_active">
+                  <button type="submit" class="dropdown-item text-danger">
+                    {% if s.is_active %}Mark as Maintenance{% else %}Mark as Active{% endif %}
+                  </button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+          <span class="font-weight-bold text-muted ml-3" style="width: 25px;">{{ row_name }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<style>
+  .screen-box {
+    background: #343a40;
+    color: #fff;
+    padding: 8px;
+    letter-spacing: 4px;
+    border-radius: 4px;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  }
+  .seat-btn {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    line-height: 38px;
+    font-weight: bold;
+    border-radius: 6px;
+  }
+</style>
+{% endblock %}

@@ -1,5 +1,5 @@
 from django import forms
-from .models import Movie, Genre, Language, CastMember, Theater, ShowSchedule, Review, ReportedReview
+from .models import Movie, Genre, Language, CastMember, Theater, Screen, ShowSchedule, Review, ReportedReview
 
 
 class ReviewForm(forms.ModelForm):
@@ -86,15 +86,30 @@ class TheaterForm(forms.ModelForm):
         }
 
 
+class ScreenForm(forms.ModelForm):
+    class Meta:
+        model = Screen
+        fields = ['theater', 'name', 'screen_type', 'total_rows', 'seats_per_row']
+        widgets = {
+            'theater': forms.Select(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Screen 1 - IMAX'}),
+            'screen_type': forms.Select(attrs={'class': 'form-control'}),
+            'total_rows': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 26}),
+            'seats_per_row': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 30}),
+        }
+
+
 class ShowScheduleForm(forms.ModelForm):
     class Meta:
         model = ShowSchedule
-        fields = ['movie', 'theater', 'show_time', 'price', 'available_seats']
+        fields = ['movie', 'theater', 'screen', 'show_time', 'price', 'available_seats']
         widgets = {
             'movie': forms.Select(attrs={'class': 'form-control'}),
             'theater': forms.Select(attrs={'class': 'form-control'}),
+            'screen': forms.Select(attrs={'class': 'form-control'}),
             'show_time': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'available_seats': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
         }
+
 

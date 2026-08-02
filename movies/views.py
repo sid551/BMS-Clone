@@ -635,3 +635,167 @@ def admin_screen_seat_map(request, screen_id):
     })
 
 
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_manage_seats(request):
+    theaters = Theater.objects.all()
+    theater_id = request.GET.get('theater_id')
+    screen_id = request.GET.get('screen_id')
+    schedule_id = request.GET.get('schedule_id')
+
+    selected_theater = Theater.objects.filter(id=theater_id).first() if theater_id else theaters.first()
+    screens = selected_theater.screens.all() if selected_theater else Screen.objects.none()
+    selected_screen = screens.filter(id=screen_id).first() if screen_id else screens.first()
+
+    schedules = ShowSchedule.objects.filter(theater=selected_theater).order_by('-show_time') if selected_theater else ShowSchedule.objects.none()
+    selected_schedule = schedules.filter(id=schedule_id).first() if schedule_id else None
+
+    row_groups = {}
+    total_count = 0
+    available_count = 0
+    booked_count = 0
+    maintenance_count = 0
+
+    if selected_screen:
+        selected_screen.generate_seats()
+        seats = selected_screen.seats.all().order_by('row', 'number')
+
+        booked_seat_ids = set()
+        if selected_schedule:
+            booked_seat_ids = set(
+                BookingSeat.objects.filter(show_schedule=selected_schedule)
+                .values_list('seat_id', flat=True)
+            )
+        else:
+            booked_seat_ids = set(Seat.objects.filter(screen=selected_screen, is_booked=True).values_list('id', flat=True))
+
+        for s in seats:
+            total_count += 1
+            if not s.is_active:
+                s.display_status = 'maintenance'
+                maintenance_count += 1
+            elif s.id in booked_seat_ids or s.is_booked:
+                s.display_status = 'booked'
+                booked_count += 1
+            else:
+                s.display_status = 'available'
+                available_count += 1
+
+            row_groups.setdefault(s.row, []).append(s)
+
+    return render(request, 'movies/custom_admin/manage_seats.html', {
+        'theaters': theaters,
+        'selected_theater': selected_theater,
+        'screens': screens,
+        'selected_screen': selected_screen,
+        'schedules': schedules,
+        'selected_schedule': selected_schedule,
+        'row_groups': row_groups,
+        'total_count': total_count,
+        'available_count': available_count,
+        'booked_count': booked_count,
+        'maintenance_count': maintenance_count,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_update_seat_status(request):
+    if request.method == 'POST':
+        action_type = request.POST.get('action_type')
+        screen_id = request.POST.get('screen_id')
+        schedule_id = request.POST.get('schedule_id')
+        screen = get_object_or_404(Screen, id=screen_id)
+
+        schedule = ShowSchedule.objects.filter(id=schedule_id).first() if schedule_id else None
+
+        if action_type == 'single_seat':
+            seat_id = request.POST.get('seat_id')
+            new_status = request.POST.get('status')
+            new_tier = request.POST.get('seat_type')
+            seat = get_object_or_404(Seat, id=seat_id, screen=screen)
+
+            if new_status == 'available':
+                seat.is_active = True
+                seat.is_booked = False
+                seat.save(update_fields=['is_active', 'is_booked'])
+                if schedule:
+                    BookingSeat.objects.filter(show_schedule=schedule, seat=seat).delete()
+                messages.success(request, f'Seat {seat.seat_number} marked as Available (Unbooked).')
+
+            elif new_status == 'booked':
+                seat.is_active = True
+                seat.is_booked = True
+                seat.save(update_fields=['is_active', 'is_booked'])
+                if schedule:
+                    admin_booking, _ = Booking.objects.get_or_create(
+                        user=request.user,
+                        show_schedule=schedule,
+                        status='confirmed',
+                        defaults={'number_of_seats': 1, 'total_price': schedule.price, 'movie': schedule.movie, 'theater': schedule.theater}
+                    )
+                    BookingSeat.objects.get_or_create(
+                        booking=admin_booking,
+                        show_schedule=schedule,
+                        seat=seat,
+                        defaults={'price': seat.calculate_price(schedule.price)}
+                    )
+                messages.success(request, f'Seat {seat.seat_number} marked as Booked / Reserved.')
+
+            elif new_status == 'maintenance':
+                seat.is_active = False
+                seat.save(update_fields=['is_active'])
+                messages.warning(request, f'Seat {seat.seat_number} marked as Out of Service (Maintenance).')
+
+            if new_tier in ['regular', 'premium', 'recliner']:
+                seat.seat_type = new_tier
+                mult_map = {'regular': 1.00, 'premium': 1.20, 'recliner': 1.50}
+                seat.price_multiplier = mult_map[new_tier]
+                seat.save(update_fields=['seat_type', 'price_multiplier'])
+
+        elif action_type == 'bulk_row':
+            row_letter = request.POST.get('row_letter')
+            row_status = request.POST.get('row_status')
+            seats_in_row = screen.seats.filter(row=row_letter)
+
+            if row_status == 'available':
+                seats_in_row.update(is_active=True, is_booked=False)
+                if schedule:
+                    BookingSeat.objects.filter(show_schedule=schedule, seat__in=seats_in_row).delete()
+                messages.success(request, f'All seats in Row {row_letter} marked as Available.')
+
+            elif row_status == 'booked':
+                seats_in_row.update(is_active=True, is_booked=True)
+                if schedule:
+                    admin_booking, _ = Booking.objects.get_or_create(
+                        user=request.user,
+                        show_schedule=schedule,
+                        status='confirmed',
+                        defaults={'number_of_seats': 1, 'total_price': schedule.price, 'movie': schedule.movie, 'theater': schedule.theater}
+                    )
+                    for s in seats_in_row:
+                        BookingSeat.objects.get_or_create(
+                            booking=admin_booking,
+                            show_schedule=schedule,
+                            seat=s,
+                            defaults={'price': s.calculate_price(schedule.price)}
+                        )
+                messages.success(request, f'All seats in Row {row_letter} marked as Booked / Reserved.')
+
+            elif row_status == 'maintenance':
+                seats_in_row.update(is_active=False)
+                messages.warning(request, f'All seats in Row {row_letter} marked as Out of Service.')
+
+        elif action_type == 'reset_screen':
+            screen.seats.all().update(is_active=True, is_booked=False)
+            if schedule:
+                BookingSeat.objects.filter(show_schedule=schedule).delete()
+            messages.info(request, f'All seats for {screen.name} reset to Available.')
+
+        redirect_url = f"{reversed('admin_manage_seats')}?theater_id={screen.theater.id}&screen_id={screen.id}"
+        if schedule_id:
+            redirect_url += f"&schedule_id={schedule_id}"
+        return redirect(redirect_url)
+
+    return redirect('admin_manage_seats')
+
+
+

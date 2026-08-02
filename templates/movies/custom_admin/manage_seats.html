@@ -1,0 +1,219 @@
+{% extends "users/basic.html" %}
+
+{% block title %}Seat Management - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <a href="{% url 'admin_dashboard' %}" class="text-muted small">&laquo; Back to Admin Dashboard</a>
+      <h2 class="mb-0"><i class="fas fa-chair text-danger mr-2"></i>Seat & Layout Management</h2>
+      <p class="text-muted mb-0">Control seat availability, manual reservations, maintenance status, and pricing tiers.</p>
+    </div>
+  </div>
+
+  {% for message in messages %}
+    <div class="alert alert-info alert-dismissible fade show">
+      {{ message }}
+      <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+    </div>
+  {% endfor %}
+
+  <!-- Filter Selector Card -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-dark text-white font-weight-bold">
+      <i class="fas fa-filter mr-2"></i>Select Theater, Screen & Show Schedule
+    </div>
+    <div class="card-body">
+      <form method="get" class="row">
+        <div class="col-md-4 mb-2">
+          <label class="small font-weight-bold">1. Select Theater</label>
+          <select name="theater_id" class="form-control" onchange="this.form.submit()">
+            {% for t in theaters %}
+              <option value="{{ t.id }}" {% if selected_theater and selected_theater.id == t.id %}selected{% endif %}>
+                {{ t.name }} ({{ t.location|default:"Main Branch" }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-4 mb-2">
+          <label class="small font-weight-bold">2. Select Screen / Audi</label>
+          <select name="screen_id" class="form-control" onchange="this.form.submit()">
+            {% for s in screens %}
+              <option value="{{ s.id }}" {% if selected_screen and selected_screen.id == s.id %}selected{% endif %}>
+                {{ s.name }} ({{ s.get_screen_type_display }})
+              </option>
+            {% empty %}
+              <option value="">No screens created for this theater</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-4 mb-2">
+          <label class="small font-weight-bold">3. Select Show Schedule (Optional)</label>
+          <select name="schedule_id" class="form-control" onchange="this.form.submit()">
+            <option value="">-- General Screen Master Layout --</option>
+            {% for sch in schedules %}
+              <option value="{{ sch.id }}" {% if selected_schedule and selected_schedule.id == sch.id %}selected{% endif %}>
+                {{ sch.movie.title }} - {{ sch.show_time|date:"M d, h:i A" }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if selected_screen %}
+    <!-- Layman Summary Counter Cards -->
+    <div class="row mb-4">
+      <div class="col-md-3 col-6 mb-2">
+        <div class="card bg-light border shadow-sm text-center py-2">
+          <h4 class="font-weight-bold mb-0">{{ total_count }}</h4>
+          <small class="text-muted">Total Capacity</small>
+        </div>
+      </div>
+      <div class="col-md-3 col-6 mb-2">
+        <div class="card bg-success text-white shadow-sm text-center py-2">
+          <h4 class="font-weight-bold mb-0">&#128994; {{ available_count }}</h4>
+          <small>Available (Open)</small>
+        </div>
+      </div>
+      <div class="col-md-3 col-6 mb-2">
+        <div class="card bg-danger text-white shadow-sm text-center py-2">
+          <h4 class="font-weight-bold mb-0">&#128308; {{ booked_count }}</h4>
+          <small>Booked / Reserved</small>
+        </div>
+      </div>
+      <div class="col-md-3 col-6 mb-2">
+        <div class="card bg-warning text-dark shadow-sm text-center py-2">
+          <h4 class="font-weight-bold mb-0">&#128993; {{ maintenance_count }}</h4>
+          <small>Out of Service</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bulk Controls Bar -->
+    <div class="card mb-4 shadow-sm">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center font-weight-bold">
+        <span><i class="fas fa-tools text-primary mr-2"></i>Quick Row & Layout Controls</span>
+        <form method="post" action="{% url 'admin_update_seat_status' %}" class="d-inline" onsubmit="return confirm('Reset all seats in this screen to Available?')">
+          {% csrf_token %}
+          <input type="hidden" name="action_type" value="reset_screen">
+          <input type="hidden" name="screen_id" value="{{ selected_screen.id }}">
+          {% if selected_schedule %}<input type="hidden" name="schedule_id" value="{{ selected_schedule.id }}">{% endif %}
+          <button type="submit" class="btn btn-sm btn-outline-danger">Reset All Seats to Available</button>
+        </form>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{% url 'admin_update_seat_status' %}" class="form-inline">
+          {% csrf_token %}
+          <input type="hidden" name="action_type" value="bulk_row">
+          <input type="hidden" name="screen_id" value="{{ selected_screen.id }}">
+          {% if selected_schedule %}<input type="hidden" name="schedule_id" value="{{ selected_schedule.id }}">{% endif %}
+
+          <label class="mr-2 font-weight-bold">Apply to Entire Row:</label>
+          <select name="row_letter" class="form-control mr-2" required>
+            {% for row_name in row_groups.keys %}
+              <option value="{{ row_name }}">Row {{ row_name }}</option>
+            {% endfor %}
+          </select>
+
+          <label class="mr-2 font-weight-bold">Set Status:</label>
+          <select name="row_status" class="form-control mr-2" required>
+            <option value="available">&#128994; Mark All Available</option>
+            <option value="booked">&#128308; Mark All Booked / Reserved</option>
+            <option value="maintenance">&#128993; Mark All Out of Service</option>
+          </select>
+
+          <button type="submit" class="btn btn-primary">Apply Row Action</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Visual Interactive Grid -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-body text-center overflow-auto">
+        <div class="screen-arch mb-4">SCREEN THIS WAY</div>
+
+        {% for row_name, row_seats in row_groups.items %}
+          <div class="d-flex justify-content-center align-items-center mb-2">
+            <span class="font-weight-bold text-muted mr-3" style="width: 25px;">{{ row_name }}</span>
+            {% for s in row_seats %}
+              <div class="dropdown d-inline-block">
+                <button class="btn btn-sm seat-item m-1
+                               {% if s.display_status == 'maintenance' %}seat-maintenance
+                               {% elif s.display_status == 'booked' %}seat-booked
+                               {% else %}seat-available{% endif %}"
+                        type="button" data-toggle="dropdown" title="Seat {{ s.seat_number }} ({{ s.get_seat_type_display }}) - Click to manage">
+                  {{ s.number }}
+                </button>
+                <div class="dropdown-menu shadow">
+                  <h6 class="dropdown-header font-weight-bold">Seat {{ s.seat_number }}</h6>
+                  <div class="dropdown-divider"></div>
+
+                  <!-- Status Actions -->
+                  <form method="post" action="{% url 'admin_update_seat_status' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action_type" value="single_seat">
+                    <input type="hidden" name="screen_id" value="{{ selected_screen.id }}">
+                    {% if selected_schedule %}<input type="hidden" name="schedule_id" value="{{ selected_schedule.id }}">{% endif %}
+                    <input type="hidden" name="seat_id" value="{{ s.id }}">
+
+                    <button type="submit" name="status" value="available" class="dropdown-item text-success font-weight-bold">
+                      &#128994; Mark Available (Unbook)
+                    </button>
+                    <button type="submit" name="status" value="booked" class="dropdown-item text-danger font-weight-bold">
+                      &#128308; Mark Booked / Reserved
+                    </button>
+                    <button type="submit" name="status" value="maintenance" class="dropdown-item text-warning font-weight-bold">
+                      &#128993; Out of Service (Maintenance)
+                    </button>
+
+                    <div class="dropdown-divider"></div>
+                    <h6 class="dropdown-header">Change Seat Tier</h6>
+                    <button type="submit" name="seat_type" value="recliner" class="dropdown-item">Set as Recliner / VIP (1.5x)</button>
+                    <button type="submit" name="seat_type" value="premium" class="dropdown-item">Set as Premium (1.2x)</button>
+                    <button type="submit" name="seat_type" value="regular" class="dropdown-item">Set as Regular (1.0x)</button>
+                  </form>
+                </div>
+              </div>
+            {% endfor %}
+            <span class="font-weight-bold text-muted ml-3" style="width: 25px;">{{ row_name }}</span>
+          </div>
+        {% endfor %}
+
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-warning">No screens available for this theater. Click <a href="{% url 'admin_screen_add' %}">Add New Screen</a> to configure layout.</div>
+  {% endif %}
+
+</div>
+
+<style>
+  .screen-arch {
+    background: #343a40;
+    color: #ffffff;
+    font-weight: bold;
+    letter-spacing: 4px;
+    padding: 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  }
+  .seat-item {
+    width: 38px;
+    height: 38px;
+    line-height: 36px;
+    font-weight: bold;
+    border-radius: 6px;
+    padding: 0;
+  }
+  .seat-available { background-color: #28a745; color: white; border: 1px solid #1e7e34; }
+  .seat-booked { background-color: #dc3545; color: white; border: 1px solid #bd2130; }
+  .seat-maintenance { background-color: #ffc107; color: #212529; border: 1px solid #d39e00; }
+</style>
+{% endblock %}

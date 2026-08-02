@@ -268,3 +268,77 @@ class MovieManagementTestCase(TestCase):
         self.assertEqual(map_resp.status_code, 200)
         self.assertContains(map_resp, 'Screen 1 - IMAX')
 
+    def test_admin_layman_seat_management(self):
+        from .models import Screen, Seat, BookingSeat
+
+        screen = Screen.objects.create(
+            theater=self.theater,
+            name='Screen 2 - VIP',
+            screen_type='4DX',
+            total_rows=5,
+            seats_per_row=6
+        )
+        screen.generate_seats()
+
+        self.client.login(username='admin', password='adminpassword')
+
+        # 1. Access admin manage seats view
+        url = f"{reverse('admin_manage_seats')}?theater_id={self.theater.id}&screen_id={screen.id}"
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Layout Management')
+
+
+        # 2. Single seat status change -> mark booked
+        sample_seat = screen.seats.first()
+        self.client.post(reverse('admin_update_seat_status'), {
+            'action_type': 'single_seat',
+            'screen_id': screen.id,
+            'seat_id': sample_seat.id,
+            'status': 'booked'
+        })
+        sample_seat.refresh_from_db()
+        self.assertTrue(sample_seat.is_booked)
+
+        # 3. Single seat status change -> mark available
+        self.client.post(reverse('admin_update_seat_status'), {
+            'action_type': 'single_seat',
+            'screen_id': screen.id,
+            'seat_id': sample_seat.id,
+            'status': 'available'
+        })
+        sample_seat.refresh_from_db()
+        self.assertFalse(sample_seat.is_booked)
+        self.assertTrue(sample_seat.is_active)
+
+        # 4. Single seat status change -> mark maintenance
+        self.client.post(reverse('admin_update_seat_status'), {
+            'action_type': 'single_seat',
+            'screen_id': screen.id,
+            'seat_id': sample_seat.id,
+            'status': 'maintenance'
+        })
+        sample_seat.refresh_from_db()
+        self.assertFalse(sample_seat.is_active)
+
+        # 5. Bulk Row action -> mark Row A as booked
+        self.client.post(reverse('admin_update_seat_status'), {
+            'action_type': 'bulk_row',
+            'screen_id': screen.id,
+            'row_letter': 'A',
+            'row_status': 'booked'
+        })
+        row_a_seats = screen.seats.filter(row='A')
+        for s in row_a_seats:
+            self.assertTrue(s.is_booked)
+
+        # 6. Reset screen seats
+        self.client.post(reverse('admin_update_seat_status'), {
+            'action_type': 'reset_screen',
+            'screen_id': screen.id
+        })
+        for s in screen.seats.all():
+            self.assertFalse(s.is_booked)
+            self.assertTrue(s.is_active)
+
+

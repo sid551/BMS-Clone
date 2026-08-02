@@ -109,7 +109,34 @@ class ShowScheduleForm(forms.ModelForm):
             'screen': forms.Select(attrs={'class': 'form-control'}),
             'show_time': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'available_seats': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'available_seats': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 0,
+                'placeholder': 'Auto-synced with Screen Capacity if blank'
+            }),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['available_seats'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        screen = cleaned_data.get('screen')
+        theater = cleaned_data.get('theater')
+        available_seats = cleaned_data.get('available_seats')
+
+        max_capacity = 0
+        if screen:
+            max_capacity = screen.total_seats
+        elif theater:
+            max_capacity = theater.total_seats
+
+        if available_seats and max_capacity > 0 and available_seats > max_capacity:
+            raise forms.ValidationError(
+                f'Capacity Inconsistency Error: Available seats ({available_seats}) cannot exceed screen capacity ({max_capacity}).'
+            )
+        return cleaned_data
+
 
 

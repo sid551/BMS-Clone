@@ -268,18 +268,35 @@ class ShowSchedule(models.Model):
     price = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
     available_seats = models.PositiveIntegerField(default=0)
 
+    def get_max_capacity(self):
+        if self.screen:
+            return self.screen.total_seats
+        elif self.theater:
+            return self.theater.total_seats
+        return 0
+
+    def clean(self):
+        super().clean()
+        max_cap = self.get_max_capacity()
+        if max_cap > 0 and self.available_seats > max_cap:
+            raise ValidationError(
+                f'Available seats ({self.available_seats}) cannot exceed physical screen/theater capacity ({max_cap}).'
+            )
+
     def save(self, *args, **kwargs):
         # Sync theater from screen if screen is set
         if self.screen and not self.theater_id:
             self.theater = self.screen.theater
 
-        # Auto populate available_seats if 0 or not set
-        if (not self.available_seats or self.available_seats == 0) and self.screen:
-            self.available_seats = self.screen.total_seats
-        elif (not self.available_seats or self.available_seats == 0) and self.theater:
-            self.available_seats = self.theater.total_seats
+        # Enforce max capacity cap
+        max_cap = self.get_max_capacity()
+        if (not self.available_seats or self.available_seats == 0) and max_cap > 0:
+            self.available_seats = max_cap
+        elif max_cap > 0 and self.available_seats > max_cap:
+            self.available_seats = max_cap
 
         super().save(*args, **kwargs)
+
 
 
     def __str__(self):

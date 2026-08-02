@@ -793,9 +793,15 @@ def admin_update_seat_status(request):
             screen.seats.all().update(is_active=True, is_booked=False)
             if schedule:
                 BookingSeat.objects.filter(show_schedule=schedule).delete()
-            messages.info(request, f'All seats for {screen.name} reset to Available.')
+        # Dynamically auto-sync schedule available seats with real active unbooked physical seats
+        if schedule:
+            booked_count = BookingSeat.objects.filter(show_schedule=schedule).count()
+            active_seats_count = screen.seats.filter(is_active=True).count()
+            schedule.available_seats = max(0, active_seats_count - booked_count)
+            schedule.save(update_fields=['available_seats'])
 
         redirect_url = f"{reverse('admin_manage_seats')}?theater_id={screen.theater.id}&screen_id={screen.id}"
+
 
         if schedule_id:
             redirect_url += f"&schedule_id={schedule_id}"

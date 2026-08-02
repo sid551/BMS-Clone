@@ -20,6 +20,10 @@
           {{ form.theater }}
         </div>
         <div class="form-group">
+          <label>Screen / Audi (Optional - Auto-syncs Seats & Theater)</label>
+          {{ form.screen }}
+        </div>
+        <div class="form-group">
           <label>Show Time *</label>
           {{ form.show_time }}
         </div>
@@ -28,9 +32,11 @@
           {{ form.price }}
         </div>
         <div class="form-group">
-          <label>Available Seats *</label>
+          <label>Available Seats (Leave blank to auto-sync with Screen Capacity)</label>
           {{ form.available_seats }}
+          <small class="form-text text-muted">Auto-capped at Screen Capacity. Prevents inconsistency errors.</small>
         </div>
+
 
         <div class="border-top pt-3 text-right">
           <a href="{% url 'admin_manage_schedules' %}" class="btn btn-secondary mr-2">Cancel</a>

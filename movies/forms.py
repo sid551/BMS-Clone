@@ -100,14 +100,6 @@ class ScreenForm(forms.ModelForm):
 
 
 class ShowScheduleForm(forms.ModelForm):
-    show_time = forms.DateTimeField(
-        widget=forms.DateTimeInput(
-            attrs={'class': 'form-control', 'type': 'datetime-local'},
-            format='%Y-%m-%dT%H:%M'
-        ),
-        input_formats=['%Y-%m-%dT%H:%M', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
-    )
-
     class Meta:
         model = ShowSchedule
         fields = ['movie', 'theater', 'screen', 'show_time', 'price', 'available_seats']
@@ -115,6 +107,10 @@ class ShowScheduleForm(forms.ModelForm):
             'movie': forms.Select(attrs={'class': 'form-control'}),
             'theater': forms.Select(attrs={'class': 'form-control'}),
             'screen': forms.Select(attrs={'class': 'form-control'}),
+            'show_time': forms.DateTimeInput(
+                attrs={'class': 'form-control', 'type': 'datetime-local'},
+                format='%Y-%m-%dT%H:%M'
+            ),
             'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'available_seats': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -126,8 +122,12 @@ class ShowScheduleForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['available_seats'].required = False
+        self.fields['show_time'].input_formats = [
+            '%Y-%m-%dT%H:%M', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M'
+        ]
         if self.instance and self.instance.pk and self.instance.show_time:
             self.initial['show_time'] = self.instance.show_time.strftime('%Y-%m-%dT%H:%M')
+
 
 
     def clean(self):

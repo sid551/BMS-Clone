@@ -443,9 +443,12 @@ def admin_schedule_form(request, schedule_id=None):
     if request.method == 'POST':
         form = ShowScheduleForm(request.POST, instance=schedule)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Show schedule saved successfully.')
-            return redirect('admin_manage_schedules')
+            try:
+                form.save()
+                messages.success(request, 'Show schedule saved successfully.')
+                return redirect('admin_manage_schedules')
+            except Exception as e:
+                messages.error(request, f'Database Error saving schedule: {str(e)}')
     else:
         form = ShowScheduleForm(instance=schedule)
 
@@ -453,6 +456,7 @@ def admin_schedule_form(request, schedule_id=None):
         'form': form,
         'schedule': schedule,
     })
+
 
 
 @user_passes_test(is_staff_user, login_url='/login/')

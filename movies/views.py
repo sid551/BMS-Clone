@@ -193,35 +193,36 @@ def add_review(request, movie_id):
         messages.info(request, 'You have already reviewed this movie. Edit your review instead.')
         return redirect('edit_review', review_id=existing.id)
 
+    # Check 1: confirmed booking exists for this movie
+    user_bookings = Booking.objects.filter(
+        user=request.user,
+        status__in=['confirmed', 'completed'],
+    ).filter(
+        Q(show_schedule__movie=movie) | Q(movie=movie)
+    )
+
+    if not user_bookings.exists():
+        messages.error(request, 'You can only review a movie after booking a ticket.')
+        return redirect('movie_detail', movie_id=movie.id)
+
+    # Check 2: show schedule must have passed
+    past_booking_exists = user_bookings.filter(
+        show_schedule__show_time__lt=timezone.now()
+    ).exists()
+
+    if not past_booking_exists:
+        messages.warning(request, 'Review form unlocks only after your booked show schedule has passed.')
+        return redirect('movie_detail', movie_id=movie.id)
+
     if request.method == 'POST':
         form = ReviewForm(request.POST)
         if form.is_valid():
             review = form.save(commit=False)
             review.user = request.user
             review.movie = movie
-
-            # Check 1: confirmed booking exists
-            user_bookings = Booking.objects.filter(
-                user=request.user,
-                status__in=['confirmed', 'completed'],
-            ).filter(
-                Q(show_schedule__movie=movie) | Q(movie=movie)
-            )
-
-            if not user_bookings.exists():
-                messages.error(request, 'You can only review a movie after a confirmed booking.')
-            else:
-                # Check 2: show must have ended — only trust ShowSchedule.show_time
-                show_ended = user_bookings.filter(
-                    show_schedule__show_time__lt=timezone.now()
-                ).exists()
-
-                if not show_ended:
-                    messages.error(request, 'You can only review a movie after the show has ended.')
-                else:
-                    review.save()
-                    messages.success(request, 'Review submitted successfully.')
-                    return redirect('movie_detail', movie_id=movie.id)
+            review.save()
+            messages.success(request, 'Review submitted successfully.')
+            return redirect('movie_detail', movie_id=movie.id)
     else:
         form = ReviewForm()
 
@@ -279,6 +280,32 @@ def movie_detail(request, movie_id):
     user_review = reviews.filter(user=request.user).first() if request.user.is_authenticated else None
     other_reviews = reviews.exclude(user=request.user) if request.user.is_authenticated else reviews
 
+    # Check if user can review (must have confirmed booking whose showtime has passed)
+    can_review = False
+    review_lock_reason = None
+    if request.user.is_authenticated:
+        user_bookings = Booking.objects.filter(
+            user=request.user,
+            status__in=['confirmed', 'completed']
+        ).filter(
+            Q(show_schedule__movie=movie) | Q(movie=movie)
+        )
+        if not user_bookings.exists():
+            review_lock_reason = "You must book a ticket to review this movie."
+        else:
+            past_booking = user_bookings.filter(
+                show_schedule__show_time__lt=timezone.now()
+            ).first()
+            if past_booking:
+                can_review = True
+            else:
+                upcoming_booking = user_bookings.order_by('show_schedule__show_time').first()
+                if upcoming_booking and upcoming_booking.show_schedule:
+                    show_str = upcoming_booking.show_schedule.show_time.strftime('%b %d, %Y at %I:%M %p')
+                    review_lock_reason = f"Review unlocks after your show on {show_str}."
+                else:
+                    review_lock_reason = "Review unlocks after your showtime has passed."
+
     # Meta info string built in Python — avoids inline template conditionals
     meta_parts = []
     if movie.release_date:
@@ -312,6 +339,8 @@ def movie_detail(request, movie_id):
         'movie_meta': movie_meta,
         'reviews': other_reviews,
         'user_review': user_review,
+        'can_review': can_review,
+        'review_lock_reason': review_lock_reason,
         'schedules_by_theater': schedules_by_theater,
         'gallery': movie.images.all(),
         'cast': movie.cast.all(),
@@ -319,6 +348,7 @@ def movie_detail(request, movie_id):
         'trending_movies': trending,
         'recently_released': recently_released,
     })
+
 
 
 @login_required(login_url='/login/')

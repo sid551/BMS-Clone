@@ -192,23 +192,33 @@ class Screen(models.Model):
 
     def generate_seats(self):
         """Auto-generate seat layout grid for this screen if not present."""
-        if self.seats.exists():
-            return
         import string
         rows = list(string.ascii_uppercase[:min(self.total_rows, 26)])
-        seats_to_create = []
 
+        if self.seats.exists():
+            # Re-sync tiers if seats already exist
+            for row_idx, row_name in enumerate(rows):
+                if row_idx < max(1, int(len(rows) * 0.40)):
+                    stype, mult = 'regular', 1.00
+                elif row_idx < int(len(rows) * 0.75):
+                    stype, mult = 'premium', 1.20
+                else:
+                    stype, mult = 'recliner', 1.50
+                self.seats.filter(row=row_name).update(seat_type=stype, price_multiplier=mult)
+            return
+
+        seats_to_create = []
         for row_idx, row_name in enumerate(rows):
-            # Tiers: Top 25% Recliner, Middle 50% Premium, Front 25% Regular
-            if row_idx < max(1, int(len(rows) * 0.25)):
-                seat_type = 'recliner'
-                multiplier = 1.50
+            # Tiers: Front (Row A...) Regular (1.0x), Middle Premium (1.2x), Back Recliner (1.5x)
+            if row_idx < max(1, int(len(rows) * 0.40)):
+                seat_type = 'regular'
+                multiplier = 1.00
             elif row_idx < int(len(rows) * 0.75):
                 seat_type = 'premium'
                 multiplier = 1.20
             else:
-                seat_type = 'regular'
-                multiplier = 1.00
+                seat_type = 'recliner'
+                multiplier = 1.50
 
             for num in range(1, self.seats_per_row + 1):
                 seat_num_str = f'{row_name}{num}'
@@ -223,6 +233,7 @@ class Screen(models.Model):
                     is_active=True
                 ))
         Seat.objects.bulk_create(seats_to_create)
+
 
     class Meta:
         ordering = ['name']

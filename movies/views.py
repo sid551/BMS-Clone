@@ -74,8 +74,9 @@ def book_seats(request, theater_id):
     # Base ticket price
     base_price = schedule.price if schedule else 200.00
 
-    # Group seats by tier and row for layout rendering
-    tier_groups = {'recliner': {}, 'premium': {}, 'regular': {}}
+    # Group seats by tier and row for layout rendering (Regular front near screen -> Premium -> Recliner back)
+    tier_groups = {'regular': {}, 'premium': {}, 'recliner': {}}
+
     tier_prices = {}
 
     for s in all_seats:

@@ -161,11 +161,17 @@ class Theater(models.Model):
     )
     time = models.DateTimeField(null=True, blank=True)
 
-    def __str__(self):
-        return self.name
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.pk and self.screens.exists():
+            total = sum(s.total_seats for s in self.screens.all())
+            if total > 0 and self.total_seats != total:
+                self.total_seats = total
+                super().save(update_fields=['total_seats'])
 
     class Meta:
         ordering = ['name']
+
 
 
 class Screen(models.Model):

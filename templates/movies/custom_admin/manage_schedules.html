@@ -46,15 +46,23 @@
             {% for s in schedules %}
               <tr>
                 <td><strong>{{ s.movie.title }}</strong></td>
-                <td>{{ s.theater.name }} <small class="text-muted">({{ s.theater.location }})</small></td>
+                <td>
+                  {{ s.theater.name }} <small class="text-muted">({{ s.theater.location }})</small>
+                  {% if s.screen %}
+                    <br><span class="badge badge-info">{{ s.screen.name }} ({{ s.screen.get_screen_type_display }})</span>
+                  {% endif %}
+                </td>
                 <td>{{ s.show_time|date:"M d, Y - h:i A" }}</td>
                 <td>&#8377;{{ s.price }}</td>
-                <td>{{ s.available_seats }} / {{ s.theater.total_seats }}</td>
+                <td>
+                  <span class="font-weight-bold text-success">{{ s.available_seats }}</span> / {{ s.get_max_capacity }}
+                </td>
                 <td class="text-right">
                   <a href="{% url 'admin_schedule_edit' s.id %}" class="btn btn-sm btn-outline-primary mr-1">Edit</a>
                   <a href="{% url 'admin_schedule_delete' s.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
                 </td>
               </tr>
+
             {% empty %}
               <tr>
                 <td colspan="6" class="text-center text-muted py-4">No show schedules created yet.</td>

@@ -228,6 +228,32 @@
     var btn = document.getElementById('seat-btn-' + seatId);
     var csrfToken = '{{ csrf_token }}';
 
+    // OPTIMISTIC UPDATE: Flip UI state instantly (0ms delay!)
+    var isCurrentlyBooked = btn.classList.contains('seat-booked');
+    var isCurrentlyMaintenance = btn.classList.contains('seat-maintenance');
+    var oldStatus = isCurrentlyMaintenance ? 'maintenance' : (isCurrentlyBooked ? 'booked' : 'available');
+    var optimisticNewStatus = (oldStatus === 'available') ? 'booked' : 'available';
+
+    // Apply color change instantly on click
+    btn.classList.remove('seat-available', 'seat-booked', 'seat-maintenance');
+    btn.classList.add(optimisticNewStatus === 'booked' ? 'seat-booked' : 'seat-available');
+    btn.setAttribute('data-status', optimisticNewStatus);
+
+    // Optimistic Stat Counter update
+    var availEl = document.getElementById('stat-available');
+    var bookedEl = document.getElementById('stat-booked');
+    var currentAvail = parseInt(availEl.innerText.replace(/[^0-9]/g, '')) || 0;
+    var currentBooked = parseInt(bookedEl.innerText.replace(/[^0-9]/g, '')) || 0;
+
+    if (optimisticNewStatus === 'booked') {
+      availEl.innerHTML = '&#128994; ' + Math.max(0, currentAvail - 1);
+      bookedEl.innerHTML = '&#128308; ' + (currentBooked + 1);
+    } else {
+      availEl.innerHTML = '&#128994; ' + (currentAvail + 1);
+      bookedEl.innerHTML = '&#128308; ' + Math.max(0, currentBooked - 1);
+    }
+
+    // Send async AJAX request in background
     var formData = new FormData();
     formData.append('seat_id', seatId);
     formData.append('screen_id', grid.dataset.screenId);
@@ -245,23 +271,30 @@
     .then(function(response) { return response.json(); })
     .then(function(data) {
       if (data.success) {
+        // Sync final accurate counts from server response
         btn.classList.remove('seat-available', 'seat-booked', 'seat-maintenance');
-        if (data.new_status === 'available') {
-          btn.classList.add('seat-available');
-        } else if (data.new_status === 'booked') {
-          btn.classList.add('seat-booked');
-        } else if (data.new_status === 'maintenance') {
-          btn.classList.add('seat-maintenance');
-        }
+        btn.classList.add(data.new_status === 'booked' ? 'seat-booked' : (data.new_status === 'maintenance' ? 'seat-maintenance' : 'seat-available'));
         btn.setAttribute('data-status', data.new_status);
 
         document.getElementById('stat-available').innerHTML = '&#128994; ' + data.available_count;
         document.getElementById('stat-booked').innerHTML = '&#128308; ' + data.booked_count;
         document.getElementById('stat-maintenance').innerHTML = '&#128993; ' + data.maintenance_count;
+      } else {
+        revertSeatUI(btn, oldStatus);
       }
     })
-    .catch(function(error) { console.error('Error toggling seat:', error); });
+    .catch(function(error) {
+      console.error('Error toggling seat:', error);
+      revertSeatUI(btn, oldStatus);
+    });
   }
+
+  function revertSeatUI(btn, oldStatus) {
+    btn.classList.remove('seat-available', 'seat-booked', 'seat-maintenance');
+    btn.classList.add('seat-' + oldStatus);
+    btn.setAttribute('data-status', oldStatus);
+  }
+
 </script>
 
 <style>

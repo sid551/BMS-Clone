@@ -947,11 +947,11 @@ def admin_toggle_seat_ajax(request):
         schedule_id = request.POST.get('schedule_id')
         target_status = request.POST.get('target_status')
 
-        screen = get_object_or_404(Screen, id=screen_id)
-        seat = get_object_or_404(Seat, id=seat_id, screen=screen)
+        seat = get_object_or_404(Seat.objects.select_related('screen'), id=seat_id, screen_id=screen_id)
+        screen = seat.screen
         schedule = ShowSchedule.objects.filter(id=schedule_id).first() if schedule_id else None
 
-        # Determine new status if not specified
+        # Determine new status
         if not target_status:
             if not seat.is_active:
                 new_status = 'available'
@@ -991,27 +991,20 @@ def admin_toggle_seat_ajax(request):
             seat.is_active = False
             seat.save(update_fields=['is_active'])
 
-        # Recalculate schedule capacity and overall stats
-        schedule_available_seats = 0
+        # Recalculate schedule capacity and counts in lightweight queries
+        total_count = screen.seats.count()
+        maintenance_count = screen.seats.filter(is_active=False).count()
+
         if schedule:
             booked_count = BookingSeat.objects.filter(show_schedule=schedule).count()
-            active_count = screen.seats.filter(is_active=True).count()
-            schedule.available_seats = max(0, active_count - booked_count)
-            schedule.save(update_fields=['available_seats'])
-            schedule_available_seats = schedule.available_seats
-
-        # Calculate counts
-        seats = screen.seats.all()
-        booked_seat_ids = set()
-        if schedule:
-            booked_seat_ids = set(BookingSeat.objects.filter(show_schedule=schedule).values_list('seat_id', flat=True))
+            active_count = total_count - maintenance_count
+            schedule_available_seats = max(0, active_count - booked_count)
+            ShowSchedule.objects.filter(id=schedule.id).update(available_seats=schedule_available_seats)
+            available_count = schedule_available_seats
         else:
-            booked_seat_ids = set(seats.filter(is_booked=True).values_list('id', flat=True))
-
-        total_count = seats.count()
-        maintenance_count = seats.filter(is_active=False).count()
-        booked_count = sum(1 for s in seats if s.is_active and (s.id in booked_seat_ids or s.is_booked))
-        available_count = total_count - maintenance_count - booked_count
+            booked_count = screen.seats.filter(is_active=True, is_booked=True).count()
+            available_count = total_count - maintenance_count - booked_count
+            schedule_available_seats = 0
 
         return JsonResponse({
             'success': True,
@@ -1026,6 +1019,7 @@ def admin_toggle_seat_ajax(request):
         })
 
     return JsonResponse({'success': False, 'error': 'Invalid request method.'}, status=400)
+
 
 
 

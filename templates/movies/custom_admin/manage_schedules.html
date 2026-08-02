@@ -4,15 +4,22 @@
 
 {% block content %}
 <div class="container py-4">
+  {% include 'movies/custom_admin/_admin_nav.html' %}
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
       <a href="{% url 'admin_dashboard' %}" class="text-muted small">&laquo; Back to Admin Dashboard</a>
       <h2 class="mb-0">Show Schedules</h2>
     </div>
-    <a href="{% url 'admin_schedule_add' %}" class="btn btn-primary">
-      <i class="fas fa-plus mr-1"></i> Add Show Schedule
-    </a>
+    <div>
+      <a href="{% url 'admin_bulk_schedule_add' %}" class="btn btn-warning mr-2">
+        <i class="fas fa-bolt mr-1"></i> Bulk Generator
+      </a>
+      <a href="{% url 'admin_schedule_add' %}" class="btn btn-primary">
+        <i class="fas fa-plus mr-1"></i> Add Show Schedule
+      </a>
+    </div>
   </div>
+
 
   {% for message in messages %}
     <div class="alert alert-info alert-dismissible fade show">

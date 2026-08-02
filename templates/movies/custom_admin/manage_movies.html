@@ -4,7 +4,9 @@
 
 {% block content %}
 <div class="container py-4">
+  {% include 'movies/custom_admin/_admin_nav.html' %}
   <div class="d-flex justify-content-between align-items-center mb-3">
+
     <div>
       <a href="{% url 'admin_dashboard' %}" class="text-muted small">&laquo; Back to Admin Dashboard</a>
       <h2 class="mb-0">Manage Movies</h2>
@@ -61,9 +63,11 @@
                 <td>&#9733; {{ m.rating }} ({{ m.review_count }})</td>
                 <td>{{ m.release_date|date:"M d, Y"|default:"-" }}</td>
                 <td class="text-right">
+                  <a href="{% url 'admin_movie_gallery' m.id %}" class="btn btn-sm btn-outline-info mr-1">Gallery</a>
                   <a href="{% url 'admin_movie_edit' m.id %}" class="btn btn-sm btn-outline-primary mr-1">Edit</a>
                   <a href="{% url 'admin_movie_delete' m.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
                 </td>
+
               </tr>
             {% empty %}
               <tr>

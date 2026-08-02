@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -7,13 +8,14 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q, Count
 from django.utils import timezone
 from .models import (
-    Movie, Genre, Language, CastMember, Theater, Screen, Seat, Booking,
+    Movie, MovieImage, Genre, Language, CastMember, Theater, Screen, Seat, Booking,
     ShowSchedule, BookingSeat, Review, ReportedReview
 )
 from .forms import (
     ReviewForm, ReportReviewForm, MovieForm, GenreForm, LanguageForm,
     CastMemberForm, TheaterForm, ScreenForm, ShowScheduleForm
 )
+
 
 
 
@@ -800,6 +802,130 @@ def admin_update_seat_status(request):
         return redirect(redirect_url)
 
     return redirect('admin_manage_seats')
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_bulk_schedule_add(request):
+    movies = Movie.objects.all()
+    screens = Screen.objects.select_related('theater').all()
+    theaters = Theater.objects.all()
+
+    if request.method == 'POST':
+        movie_id = request.POST.get('movie_id')
+        screen_id = request.POST.get('screen_id')
+        start_date_str = request.POST.get('start_date')
+        end_date_str = request.POST.get('end_date')
+        time_slots_raw = request.POST.get('time_slots', '')  # e.g., '10:00, 14:00, 18:00, 21:30'
+        price = request.POST.get('price', 200.00)
+
+        movie = get_object_or_404(Movie, id=movie_id)
+        screen = get_object_or_404(Screen, id=screen_id)
+
+        from datetime import datetime
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            times = [t.strip() for t in time_slots_raw.split(',') if t.strip()]
+
+            created_count = 0
+            current_date = start_date
+            while current_date <= end_date:
+                for time_str in times:
+                    try:
+                        time_obj = datetime.strptime(time_str, '%H:%M').time()
+                        dt = timezone.make_aware(datetime.combine(current_date, time_obj))
+                        # Create schedule if not duplicate
+                        sch, created = ShowSchedule.objects.get_or_create(
+                            movie=movie,
+                            theater=screen.theater,
+                            screen=screen,
+                            show_time=dt,
+                            defaults={'price': price, 'available_seats': screen.total_seats}
+                        )
+                        if created:
+                            created_count += 1
+                    except ValueError:
+                        pass
+                current_date += timedelta(days=1)
+
+            messages.success(request, f'Successfully generated {created_count} show schedule(s) for "{movie.title}" on {screen.name}.')
+            return redirect('admin_manage_schedules')
+        except Exception as e:
+            messages.error(request, f'Error generating schedules: {str(e)}')
+
+    return render(request, 'movies/custom_admin/bulk_schedule_form.html', {
+        'movies': movies,
+        'screens': screens,
+        'theaters': theaters,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_manage_bookings(request):
+    search = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+
+    bookings = Booking.objects.select_related('user', 'show_schedule__movie', 'show_schedule__theater', 'show_schedule__screen', 'movie', 'theater').prefetch_related('booked_seats__seat').all()
+
+    if search:
+        bookings = bookings.filter(
+            Q(booking_reference__icontains=search) |
+            Q(user__username__icontains=search) |
+            Q(user__email__icontains=search) |
+            Q(show_schedule__movie__title__icontains=search)
+        )
+
+    if status_filter:
+        bookings = bookings.filter(status=status_filter)
+
+    return render(request, 'movies/custom_admin/manage_bookings.html', {
+        'bookings': bookings,
+        'search': search,
+        'status_filter': status_filter,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_booking_action(request, booking_id):
+    booking = get_object_or_404(Booking, id=booking_id)
+    action = request.POST.get('action')
+
+    if request.method == 'POST':
+        try:
+            if action == 'confirm' and booking.status == 'pending':
+                booking.confirm_booking()
+                messages.success(request, f'Booking {booking.booking_reference} confirmed.')
+            elif action == 'cancel':
+                booking.cancel_booking()
+                messages.success(request, f'Booking {booking.booking_reference} cancelled and seats restored.')
+        except Exception as e:
+            messages.error(request, f'Booking action failed: {str(e)}')
+
+    return redirect('admin_manage_bookings')
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_movie_gallery(request, movie_id):
+    movie = get_object_or_404(Movie, id=movie_id)
+    if request.method == 'POST':
+        if 'add_image' in request.POST:
+            image_file = request.FILES.get('image')
+            caption = request.POST.get('caption', '')
+            if image_file:
+                MovieImage.objects.create(movie=movie, image=image_file, caption=caption)
+                messages.success(request, 'Gallery image added.')
+        elif 'delete_image_id' in request.POST:
+            image_id = request.POST.get('delete_image_id')
+            MovieImage.objects.filter(id=image_id, movie=movie).delete()
+            messages.success(request, 'Gallery image deleted.')
+
+        return redirect('admin_movie_gallery', movie_id=movie.id)
+
+    return render(request, 'movies/custom_admin/movie_gallery.html', {
+        'movie': movie,
+        'images': movie.images.all(),
+    })
+
 
 
 

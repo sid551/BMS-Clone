@@ -28,9 +28,13 @@ urlpatterns = [
     path('manage/screens/add/', views.admin_screen_form, name='admin_screen_add'),
     path('manage/screens/<int:screen_id>/edit/', views.admin_screen_form, name='admin_screen_edit'),
     path('manage/screens/<int:screen_id>/delete/', views.admin_screen_delete, name='admin_screen_delete'),
-    path('manage/screens/<int:screen_id>/seat-map/', views.admin_screen_seat_map, name='admin_screen_seat_map'),
+    path('manage/movies/<int:movie_id>/gallery/', views.admin_movie_gallery, name='admin_movie_gallery'),
+    path('manage/schedules/bulk/', views.admin_bulk_schedule_add, name='admin_bulk_schedule_add'),
+    path('manage/bookings/', views.admin_manage_bookings, name='admin_manage_bookings'),
+    path('manage/bookings/<int:booking_id>/action/', views.admin_booking_action, name='admin_booking_action'),
     path('manage/seats/', views.admin_manage_seats, name='admin_manage_seats'),
     path('manage/seats/update/', views.admin_update_seat_status, name='admin_update_seat_status'),
 ]
+
 
 

@@ -4,7 +4,9 @@
 
 {% block content %}
 <div class="container py-4">
+  {% include 'movies/custom_admin/_admin_nav.html' %}
   <div class="d-flex justify-content-between align-items-center mb-4">
+
     <h2><i class="fas fa-user-shield text-primary mr-2"></i>Movie Management Admin Panel</h2>
     <a href="{% url 'admin:index' %}" class="btn btn-outline-secondary btn-sm" target="_blank">
       <i class="fas fa-cog mr-1"></i> Open Django Native Admin

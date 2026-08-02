@@ -341,4 +341,62 @@ class MovieManagementTestCase(TestCase):
             self.assertFalse(s.is_booked)
             self.assertTrue(s.is_active)
 
+    def test_interconnected_admin_and_auto_sync(self):
+        from .models import Screen, ShowSchedule, Booking
+
+        # 1. Test Screen capacity & Theater total_seats auto-sync
+        screen = Screen.objects.create(
+            theater=self.theater,
+            name='Screen 3 - AutoSync',
+            screen_type='DOLBY',
+            total_rows=10,
+            seats_per_row=10
+        )
+        # Verify auto generated 100 seats and updated theater capacity
+        self.assertEqual(screen.seats.count(), 100)
+        self.theater.refresh_from_db()
+        self.assertEqual(self.theater.total_seats, 100)
+
+        # 2. Test ShowSchedule auto-populate available_seats
+        schedule = ShowSchedule.objects.create(
+            movie=self.movie1,
+            theater=self.theater,
+            screen=screen,
+            show_time=timezone.now() + timedelta(days=5),
+            price=250.00
+        )
+        self.assertEqual(schedule.available_seats, 100)
+
+        # 3. Test Bulk Schedule Generator view
+        self.client.login(username='admin', password='adminpassword')
+        bulk_resp = self.client.post(reverse('admin_bulk_schedule_add'), {
+            'movie_id': self.movie1.id,
+            'screen_id': screen.id,
+            'start_date': (timezone.now() + timedelta(days=6)).strftime('%Y-%m-%d'),
+            'end_date': (timezone.now() + timedelta(days=7)).strftime('%Y-%m-%d'),
+            'time_slots': '10:00, 18:00',
+            'price': 300.00
+        })
+        self.assertEqual(bulk_resp.status_code, 302)
+
+        # 4. Test Bookings Admin Management view
+        booking = Booking.objects.create(
+            user=self.john,
+            show_schedule=schedule,
+            number_of_seats=2,
+            total_price=500.00,
+            status='pending',
+            movie=self.movie1,
+            theater=self.theater
+        )
+        bookings_url = reverse('admin_manage_bookings')
+        resp = self.client.get(bookings_url)
+        self.assertEqual(resp.status_code, 200)
+
+        # Test Confirm Booking Action
+        self.client.post(reverse('admin_booking_action', args=[booking.id]), {'action': 'confirm'})
+        booking.refresh_from_db()
+        self.assertEqual(booking.status, 'confirmed')
+
+
 

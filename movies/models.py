@@ -234,6 +234,27 @@ class Screen(models.Model):
                 ))
         Seat.objects.bulk_create(seats_to_create)
 
+    def update_theater_capacity(self):
+
+        """Recalculate total seats for theater from all screens."""
+        if self.theater:
+            total = sum(s.total_seats for s in self.theater.screens.all())
+            if total > 0:
+                self.theater.total_seats = total
+                self.theater.save(update_fields=['total_seats'])
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.generate_seats()
+        self.update_theater_capacity()
+
+    def delete(self, *args, **kwargs):
+        theater = self.theater
+        super().delete(*args, **kwargs)
+        if theater:
+            total = sum(s.total_seats for s in theater.screens.all())
+            theater.total_seats = total
+            theater.save(update_fields=['total_seats'])
 
     class Meta:
         ordering = ['name']
@@ -251,7 +272,15 @@ class ShowSchedule(models.Model):
         # Sync theater from screen if screen is set
         if self.screen and not self.theater_id:
             self.theater = self.screen.theater
+
+        # Auto populate available_seats if 0 or not set
+        if (not self.available_seats or self.available_seats == 0) and self.screen:
+            self.available_seats = self.screen.total_seats
+        elif (not self.available_seats or self.available_seats == 0) and self.theater:
+            self.available_seats = self.theater.total_seats
+
         super().save(*args, **kwargs)
+
 
     def __str__(self):
         screen_str = f' [{self.screen.name}]' if self.screen else ''

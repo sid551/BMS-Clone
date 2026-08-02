@@ -4,8 +4,9 @@
 
 {% block content %}
 <div class="container py-4">
-  <a href="{% url 'admin_dashboard' %}" class="text-muted small">&laquo; Back to Admin Dashboard</a>
+  {% include 'movies/custom_admin/_admin_nav.html' %}
   <h2 class="mb-4">Genres, Languages, Cast & Theaters</h2>
+
 
   {% for message in messages %}
     <div class="alert alert-info alert-dismissible fade show">

@@ -1,0 +1,121 @@
+{% extends "users/basic.html" %}
+
+{% block title %}Manage Bookings - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  {% include 'movies/custom_admin/_admin_nav.html' %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="mb-0"><i class="fas fa-ticket-alt text-primary mr-2"></i>User Bookings Management</h2>
+      <p class="text-muted mb-0">View all customer ticket reservations, confirm pending orders, or process cancellations.</p>
+    </div>
+  </div>
+
+  {% for message in messages %}
+    <div class="alert alert-info alert-dismissible fade show">
+      {{ message }}
+      <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+    </div>
+  {% endfor %}
+
+  <!-- Filter & Search Bar -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <form method="get" class="row">
+        <div class="col-md-6 mb-2">
+          <input type="text" name="search" value="{{ search }}" class="form-control" placeholder="Search reference code, username, email, movie...">
+        </div>
+        <div class="col-md-4 mb-2">
+          <select name="status" class="form-control">
+            <option value="">-- All Statuses --</option>
+            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed</option>
+            <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+          </select>
+        </div>
+        <div class="col-md-2 mb-2">
+          <button type="submit" class="btn btn-primary btn-block">Filter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bookings Table -->
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-striped mb-0">
+          <thead class="thead-dark">
+            <tr>
+              <th>Ref Code</th>
+              <th>Customer</th>
+              <th>Movie & Theater</th>
+              <th>Showtime</th>
+              <th>Seats</th>
+              <th>Total (&#8377;)</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in bookings %}
+              <tr>
+                <td><strong>{{ b.booking_reference }}</strong></td>
+                <td>{{ b.user.username }}<br><small class="text-muted">{{ b.user.email }}</small></td>
+                <td>
+                  <strong>{{ b.show_schedule.movie.title|default:b.movie.title }}</strong><br>
+                  <small class="text-muted">{{ b.show_schedule.theater.name|default:b.theater.name }}</small>
+                </td>
+                <td>
+                  {% if b.show_schedule %}
+                    {{ b.show_schedule.show_time|date:"M d, h:i A" }}
+                  {% else %}
+                    <span class="text-muted">N/A</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge badge-info">{{ b.number_of_seats }} Seat(s)</span>
+                  <div class="small text-muted">
+                    {% for bs in b.booked_seats.all %}
+                      {{ bs.seat.seat_number }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                  </div>
+                </td>
+                <td><strong>&#8377;{{ b.total_price }}</strong></td>
+                <td>
+                  {% if b.status == 'confirmed' %}
+                    <span class="badge badge-success px-2 py-1">Confirmed</span>
+                  {% elif b.status == 'cancelled' %}
+                    <span class="badge badge-secondary px-2 py-1">Cancelled</span>
+                  {% else %}
+                    <span class="badge badge-warning px-2 py-1">Pending</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if b.status != 'cancelled' %}
+                    <form method="post" action="{% url 'admin_booking_action' b.id %}" class="d-inline">
+                      {% csrf_token %}
+                      {% if b.status == 'pending' %}
+                        <button type="submit" name="action" value="confirm" class="btn btn-sm btn-success">Confirm</button>
+                      {% endif %}
+                      <button type="submit" name="action" value="cancel" class="btn btn-sm btn-outline-danger" onclick="return confirm('Cancel booking and restore seat availability?')">Cancel</button>
+                    </form>
+                  {% else %}
+                    <span class="text-muted font-italic">No action</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">No bookings found matching criteria.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

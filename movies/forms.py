@@ -136,6 +136,10 @@ class ShowScheduleForm(forms.ModelForm):
         theater = cleaned_data.get('theater')
         available_seats = cleaned_data.get('available_seats')
 
+        if screen and not theater:
+            cleaned_data['theater'] = screen.theater
+            theater = screen.theater
+
         max_capacity = 0
         if screen:
             max_capacity = screen.total_seats
@@ -143,10 +147,9 @@ class ShowScheduleForm(forms.ModelForm):
             max_capacity = theater.total_seats
 
         if available_seats and max_capacity > 0 and available_seats > max_capacity:
-            raise forms.ValidationError(
-                f'Capacity Inconsistency Error: Available seats ({available_seats}) cannot exceed screen capacity ({max_capacity}).'
-            )
+            cleaned_data['available_seats'] = max_capacity
         return cleaned_data
+
 
 
 

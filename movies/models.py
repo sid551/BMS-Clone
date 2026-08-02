@@ -161,6 +161,9 @@ class Theater(models.Model):
     )
     time = models.DateTimeField(null=True, blank=True)
 
+    def __str__(self):
+        return f'{self.name} ({self.location})' if self.location else self.name
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.pk and self.screens.exists():
@@ -171,7 +174,6 @@ class Theater(models.Model):
 
     class Meta:
         ordering = ['name']
-
 
 
 class Screen(models.Model):
@@ -241,7 +243,6 @@ class Screen(models.Model):
         Seat.objects.bulk_create(seats_to_create)
 
     def update_theater_capacity(self):
-
         """Recalculate total seats for theater from all screens."""
         if self.theater:
             total = sum(s.total_seats for s in self.theater.screens.all())
@@ -285,13 +286,11 @@ class ShowSchedule(models.Model):
         super().clean()
         max_cap = self.get_max_capacity()
         if max_cap > 0 and self.available_seats > max_cap:
-            raise ValidationError(
-                f'Available seats ({self.available_seats}) cannot exceed physical screen/theater capacity ({max_cap}).'
-            )
+            self.available_seats = max_cap
 
     def save(self, *args, **kwargs):
-        # Sync theater from screen if screen is set
-        if self.screen and not self.theater_id:
+        # Always sync theater from screen if screen is set
+        if self.screen:
             self.theater = self.screen.theater
 
         # Enforce max capacity cap
@@ -302,6 +301,7 @@ class ShowSchedule(models.Model):
             self.available_seats = max_cap
 
         super().save(*args, **kwargs)
+
 
 
 

@@ -9,7 +9,20 @@
 
   <div class="card shadow-sm" style="max-width: 600px;">
     <div class="card-body">
+      {% if form.errors %}
+        <div class="alert alert-danger">
+          <ul class="mb-0">
+            {% for field, errors in form.errors.items %}
+              {% for error in errors %}
+                <li><strong>{{ field|title }}:</strong> {{ error }}</li>
+              {% endfor %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
       <form method="post">
+
         {% csrf_token %}
         <div class="form-group">
           <label>Movie *</label>

@@ -4,11 +4,15 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Count
 from django.utils import timezone
-from .models import Movie, Genre, Language, CastMember, Theater, Seat, Booking, ShowSchedule, Review, ReportedReview
+from .models import (
+    Movie, Genre, Language, CastMember, Theater, Screen, Seat, Booking,
+    ShowSchedule, BookingSeat, Review, ReportedReview
+)
 from .forms import (
     ReviewForm, ReportReviewForm, MovieForm, GenreForm, LanguageForm,
-    CastMemberForm, TheaterForm, ShowScheduleForm
+    CastMemberForm, TheaterForm, ScreenForm, ShowScheduleForm
 )
+
 
 
 def is_staff_user(user):

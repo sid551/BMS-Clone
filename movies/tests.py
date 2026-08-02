@@ -381,7 +381,9 @@ class MovieManagementTestCase(TestCase):
 
         # 4. Test Bookings Admin Management view
         booking = Booking.objects.create(
-            user=self.john,
+            user=self.normal_user,
+
+
             show_schedule=schedule,
             number_of_seats=2,
             total_price=500.00,

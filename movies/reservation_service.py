@@ -158,13 +158,6 @@ def confirm_booking(user, schedule_id):
     # Validate none have expired
     expired = [ss.seat.seat_number for ss in reserved_seats if ss.reserved_until and ss.reserved_until < now]
     if expired:
-        # Release expired ones
-        ShowSeat.objects.filter(
-            show_schedule_id=schedule_id,
-            status='reserved',
-            reserved_by=user,
-            reserved_until__lt=now,
-        ).update(status='available', reserved_by=None, reserved_until=None)
         raise ValueError(f'Reservation expired for seats: {", ".join(expired)}. Please select seats again.')
 
     # Lock the schedule row

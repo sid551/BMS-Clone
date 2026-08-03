@@ -1,0 +1,87 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label='movies' %}">Movies</a>
+&rsaquo; <a href="{% url 'admin:movies_showschedule_changelist' %}">Show schedules</a>
+&rsaquo; Bulk Add Schedules
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main" style="max-width: 800px; margin: 0 auto;">
+  <div class="module" style="background: var(--body-bg, #ffffff); border: 1px solid var(--hairline-color, #e2e8f0); border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <h1 style="margin-top: 0; font-size: 1.5rem; font-weight: 700; color: var(--body-quiet-color, #1e293b); display: flex; align-items: center; gap: 8px;">
+      🚀 Bulk Generate Show Schedules
+    </h1>
+    <p style="color: #64748b; margin-bottom: 24px;">
+      Generate recurring show schedules automatically across a date range for specified time slots.
+    </p>
+
+    {% if messages %}
+    <ul class="messagelist" style="margin-bottom: 20px;">
+      {% for message in messages %}
+      <li class="{{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <form method="post" action="">
+      {% csrf_token %}
+
+      <div class="form-row" style="margin-bottom: 16px;">
+        <label for="id_movie" style="display: block; font-weight: 600; margin-bottom: 6px;">Movie <span style="color:#ef4444;">*</span></label>
+        <select name="movie_id" id="id_movie" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: var(--input-bg, #ffffff); color: var(--body-color, #0f172a);">
+          <option value="">-- Select Movie --</option>
+          {% for movie in movies %}
+          <option value="{{ movie.id }}">{{ movie.title }} ({{ movie.get_status_display }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-row" style="margin-bottom: 16px;">
+        <label for="id_screen" style="display: block; font-weight: 600; margin-bottom: 6px;">Screen <span style="color:#ef4444;">*</span></label>
+        <select name="screen_id" id="id_screen" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: var(--input-bg, #ffffff); color: var(--body-color, #0f172a);">
+          <option value="">-- Select Screen --</option>
+          {% for screen in screens %}
+          <option value="{{ screen.id }}">{{ screen.theater.name }} — {{ screen.name }} ({{ screen.total_seats }} seats)</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <div>
+          <label for="id_start_date" style="display: block; font-weight: 600; margin-bottom: 6px;">Start Date <span style="color:#ef4444;">*</span></label>
+          <input type="date" name="start_date" id="id_start_date" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: var(--input-bg, #ffffff); color: var(--body-color, #0f172a);">
+        </div>
+        <div>
+          <label for="id_end_date" style="display: block; font-weight: 600; margin-bottom: 6px;">End Date <span style="color:#ef4444;">*</span></label>
+          <input type="date" name="end_date" id="id_end_date" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: var(--input-bg, #ffffff); color: var(--body-color, #0f172a);">
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-bottom: 16px;">
+        <label for="id_time_slots" style="display: block; font-weight: 600; margin-bottom: 6px;">Time Slots (comma-separated, 24-hr format) <span style="color:#ef4444;">*</span></label>
+        <input type="text" name="time_slots" id="id_time_slots" placeholder="e.g. 10:00, 13:30, 17:00, 20:45" value="10:00, 14:00, 18:00, 21:30" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: var(--input-bg, #ffffff); color: var(--body-color, #0f172a);">
+        <small style="color: #64748b; display: block; margin-top: 4px;">Example: 10:00, 13:30, 17:00, 20:30</small>
+      </div>
+
+      <div class="form-row" style="margin-bottom: 24px;">
+        <label for="id_price" style="display: block; font-weight: 600; margin-bottom: 6px;">Ticket Base Price (₹) <span style="color:#ef4444;">*</span></label>
+        <input type="number" step="0.01" name="price" id="id_price" value="200.00" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: var(--input-bg, #ffffff); color: var(--body-color, #0f172a);">
+      </div>
+
+      <div class="submit-row" style="display: flex; gap: 12px; align-items: center;">
+        <button type="submit" class="default" style="background-color: #2563eb; color: white; border: none; font-weight: 600; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+          ✨ Generate Schedules
+        </button>
+        <a href="{% url 'admin:movies_showschedule_changelist' %}" class="button cancel-link" style="background: #f1f5f9; color: #475569; padding: 10px 16px; border-radius: 6px; text-decoration: none; font-weight: 500;">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

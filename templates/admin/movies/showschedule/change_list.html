@@ -1,0 +1,11 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls %}
+
+{% block object-tools-items %}
+  <li>
+    <a href="{% url 'admin:movies_showschedule_bulk_add' %}" class="addlink" style="background-color: #2563eb; color: white; font-weight: 600; padding: 6px 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+      🚀 {% trans "Bulk Add Schedules" %}
+    </a>
+  </li>
+  {{ block.super }}
+{% endblock %}

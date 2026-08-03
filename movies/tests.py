@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from .models import (
     Genre, Language, CastMember, Movie, MovieImage,
-    Theater, ShowSchedule, Booking, Review, ReportedReview
+    Theater, Screen, Seat, ShowSchedule, Booking, BookingSeat, Review, ReportedReview
 )
 from .templatetags.movie_tags import youtube_embed_id, format_duration
 from .recommendations import get_similar_movies, get_trending_movies, get_recently_released
@@ -476,6 +476,52 @@ class MovieManagementTestCase(TestCase):
         self.assertTrue(data2['success'])
         self.assertEqual(data2['new_status'], 'available')
         self.assertEqual(data2['schedule_available_seats'], 20)
+
+
+class DjangoAdminFeatureParityTestCase(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(username='superadmin', email='admin@test.com', password='password123')
+        self.client.login(username='superadmin', password='password123')
+
+        self.movie = Movie.objects.create(
+            title='Admin Parity Movie',
+            duration_minutes=120,
+            release_date=timezone.now().date(),
+            status='now_showing'
+        )
+        self.theater = Theater.objects.create(name='Admin Cinema', location='City Center')
+        self.screen = Screen.objects.create(theater=self.theater, name='Screen 1', screen_type='2D', total_rows=5, seats_per_row=10)
+
+    def test_django_admin_bulk_schedule_add(self):
+        url = reverse('admin:movies_showschedule_bulk_add')
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Bulk Add Show Schedules')
+
+        post_data = {
+            'movie_id': self.movie.id,
+            'screen_id': self.screen.id,
+            'start_date': timezone.now().date().strftime('%Y-%m-%d'),
+            'end_date': (timezone.now().date() + timedelta(days=1)).strftime('%Y-%m-%d'),
+            'time_slots': '10:00, 16:00',
+            'price': 250.00
+        }
+        post_resp = self.client.post(url, post_data)
+        self.assertEqual(post_resp.status_code, 302)
+        self.assertEqual(ShowSchedule.objects.filter(movie=self.movie).count(), 4)
+
+    def test_django_admin_interactive_seat_matrix(self):
+        url = reverse('admin:movies_seat_matrix')
+        resp = self.client.get(f"{url}?theater_id={self.theater.id}&screen_id={self.screen.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Interactive Seat Matrix')
+
+    def test_screen_save_model_auto_seats(self):
+        new_screen = Screen.objects.create(theater=self.theater, name='Screen 2', screen_type='IMAX', total_rows=2, seats_per_row=5)
+        # Calling save_model logic via admin or generate_seats
+        new_screen.generate_seats()
+        self.assertEqual(Seat.objects.filter(screen=new_screen).count(), 10)
+
 
 
 

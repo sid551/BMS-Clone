@@ -1,0 +1,246 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label='movies' %}">Movies</a>
+&rsaquo; <a href="{% url 'admin:movies_seat_changelist' %}">Seats</a>
+&rsaquo; Interactive Seat Matrix
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+  .seat-grid-container {
+    background: #0f172a;
+    color: #f8fafc;
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 16px;
+  }
+  .screen-indicator {
+    width: 60%;
+    margin: 0 auto 30px auto;
+    padding: 8px;
+    background: linear-gradient(180deg, #38bdf8 0%, rgba(56, 189, 248, 0) 100%);
+    border-top: 4px solid #38bdf8;
+    border-radius: 8px 8px 0 0;
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    color: #e0f2fe;
+    box-shadow: 0 -4px 12px rgba(56, 189, 248, 0.3);
+  }
+  .seat-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .row-label {
+    width: 32px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-align: right;
+  }
+  .seat-box {
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255,255,255,0.1);
+    position: relative;
+  }
+  .seat-box:hover {
+    transform: scale(1.1);
+    z-index: 10;
+  }
+  .seat-available { background-color: #10b981; color: white; }
+  .seat-booked { background-color: #ef4444; color: white; }
+  .seat-maintenance { background-color: #64748b; color: #cbd5e1; }
+  .stat-card {
+    background: var(--body-bg, #ffffff);
+    border: 1px solid var(--hairline-color, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-val { font-size: 1.5rem; font-weight: 700; }
+</style>
+
+<div id="content-main">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h1 style="margin: 0; font-size: 1.5rem; font-weight: 700;">💺 Interactive Seat Matrix & Inventory</h1>
+  </div>
+
+  {% if messages %}
+  <ul class="messagelist" style="margin-bottom: 20px;">
+    {% for message in messages %}
+    <li class="{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <!-- Filter Toolbar -->
+  <div class="module" style="background: var(--body-bg, #ffffff); border: 1px solid var(--hairline-color, #e2e8f0); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+    <form method="get" id="filter-form" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+      <div style="flex: 1; min-width: 200px;">
+        <label for="id_theater" style="display: block; font-weight: 600; margin-bottom: 4px;">Theater</label>
+        <select name="theater_id" id="id_theater" onchange="document.getElementById('filter-form').submit();" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+          {% for t in theaters %}
+          <option value="{{ t.id }}" {% if selected_theater and selected_theater.id == t.id %}selected{% endif %}>{{ t.name }} ({{ t.location }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="flex: 1; min-width: 200px;">
+        <label for="id_screen" style="display: block; font-weight: 600; margin-bottom: 4px;">Screen / Auditorium</label>
+        <select name="screen_id" id="id_screen" onchange="document.getElementById('filter-form').submit();" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+          {% for s in screens %}
+          <option value="{{ s.id }}" {% if selected_screen and selected_screen.id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.get_screen_type_display }})</option>
+          {% empty %}
+          <option value="">No screens available</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="flex: 1; min-width: 240px;">
+        <label for="id_schedule" style="display: block; font-weight: 600; margin-bottom: 4px;">Show Schedule (Optional Context)</label>
+        <select name="schedule_id" id="id_schedule" onchange="document.getElementById('filter-form').submit();" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+          <option value="">-- All / Global Physical Layout --</option>
+          {% for sch in schedules %}
+          <option value="{{ sch.id }}" {% if selected_schedule and selected_schedule.id == sch.id %}selected{% endif %}>
+            {{ sch.movie.title }} @ {{ sch.show_time|date:"D d M H:i" }} (Available: {{ sch.available_seats }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+
+  <!-- Stat Summary Bar -->
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
+    <div class="stat-card">
+      <div style="color: #64748b; font-size: 0.85rem; font-weight: 600;">TOTAL SEATS</div>
+      <div class="stat-val" style="color: #0f172a;" id="stat-total">{{ total_count }}</div>
+    </div>
+    <div class="stat-card">
+      <div style="color: #059669; font-size: 0.85rem; font-weight: 600;">AVAILABLE</div>
+      <div class="stat-val" style="color: #059669;" id="stat-available">{{ available_count }}</div>
+    </div>
+    <div class="stat-card">
+      <div style="color: #dc2626; font-size: 0.85rem; font-weight: 600;">BOOKED / RESERVED</div>
+      <div class="stat-val" style="color: #dc2626;" id="stat-booked">{{ booked_count }}</div>
+    </div>
+    <div class="stat-card">
+      <div style="color: #475569; font-size: 0.85rem; font-weight: 600;">OUT OF SERVICE</div>
+      <div class="stat-val" style="color: #475569;" id="stat-maintenance">{{ maintenance_count }}</div>
+    </div>
+  </div>
+
+  {% if selected_screen %}
+  <!-- Quick Bulk Controls -->
+  <div class="module" style="background: var(--body-bg, #ffffff); border: 1px solid var(--hairline-color, #e2e8f0); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+    <h3 style="margin-top:0; font-size:1rem; font-weight:600;">⚡ Quick Row & Screen Actions</h3>
+    <form method="post" action="{% url 'admin_update_seat_status' %}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+      {% csrf_token %}
+      <input type="hidden" name="action_type" value="bulk_row">
+      <input type="hidden" name="screen_id" value="{{ selected_screen.id }}">
+      {% if selected_schedule %}<input type="hidden" name="schedule_id" value="{{ selected_schedule.id }}">{% endif %}
+
+      <label for="id_row_letter" style="font-weight: 600;">Target Row:</label>
+      <select name="row_letter" id="id_row_letter" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+        {% for row_key in row_groups.keys %}
+        <option value="{{ row_key }}">Row {{ row_key }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="id_row_status" style="font-weight: 600;">Set Status:</label>
+      <select name="row_status" id="id_row_status" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+        <option value="available">Available (Unbooked)</option>
+        <option value="booked">Booked / Reserved</option>
+        <option value="maintenance">Out of Service (Maintenance)</option>
+      </select>
+
+      <button type="submit" style="background: #3b82f6; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 600; cursor: pointer;">
+        Apply Row Status
+      </button>
+    </form>
+  </div>
+
+  <!-- Visual Interactive Seat Grid -->
+  <div class="seat-grid-container">
+    <div class="screen-indicator">SCREEN THIS WAY</div>
+
+    <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 24px; font-size: 0.85rem;">
+      <div style="display: flex; align-items: center; gap: 6px;"><span class="seat-box seat-available" style="width: 20px; height: 20px;"></span> Available</div>
+      <div style="display: flex; align-items: center; gap: 6px;"><span class="seat-box seat-booked" style="width: 20px; height: 20px;"></span> Booked</div>
+      <div style="display: flex; align-items: center; gap: 6px;"><span class="seat-box seat-maintenance" style="width: 20px; height: 20px;"></span> Maintenance</div>
+    </div>
+
+    {% for row_key, seat_list in row_groups.items %}
+    <div class="seat-row">
+      <div class="row-label">{{ row_key }}</div>
+      <div style="display: flex; gap: 6px;">
+        {% for seat in seat_list %}
+        <div class="seat-box seat-{{ seat.display_status }}"
+             id="seat-btn-{{ seat.id }}"
+             title="Seat {{ seat.seat_number }} ({{ seat.get_seat_type_display }}) - Status: {{ seat.display_status|title }}"
+             onclick="quickToggleSeat('{{ seat.id }}', '{{ selected_screen.id }}', '{% if selected_schedule %}{{ selected_schedule.id }}{% endif %}')">
+          {{ seat.number }}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="row-label" style="text-align: left;">{{ row_key }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="text-align: center; color: #64748b; margin-top: 40px;">No screen selected.</p>
+  {% endif %}
+</div>
+
+<script>
+function quickToggleSeat(seatId, screenId, scheduleId) {
+  const btn = document.getElementById('seat-btn-' + seatId);
+  btn.style.opacity = '0.5';
+
+  const formData = new FormData();
+  formData.append('seat_id', seatId);
+  formData.append('screen_id', screenId);
+  formData.append('schedule_id', scheduleId);
+  formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+  fetch('{% url "admin_toggle_seat_ajax" %}', {
+    method: 'POST',
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.style.opacity = '1';
+    if (data.success) {
+      btn.className = 'seat-box seat-' + data.new_status;
+      if (document.getElementById('stat-total')) document.getElementById('stat-total').innerText = data.total_count;
+      if (document.getElementById('stat-available')) document.getElementById('stat-available').innerText = data.available_count;
+      if (document.getElementById('stat-booked')) document.getElementById('stat-booked').innerText = data.booked_count;
+      if (document.getElementById('stat-maintenance')) document.getElementById('stat-maintenance').innerText = data.maintenance_count;
+    } else {
+      alert('Error updating seat: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(err => {
+    btn.style.opacity = '1';
+    alert('Network error updating seat.');
+  });
+}
+</script>
+{% endblock %}

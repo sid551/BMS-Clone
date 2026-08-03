@@ -60,6 +60,8 @@ def book_seats(request, theater_id):
     if screen:
         screen.generate_seats()
         all_seats = Seat.objects.filter(screen=screen, is_active=True).order_by('row', 'number')
+        if schedule and schedule.screen and not schedule.show_seats.exists():
+            schedule._generate_show_seats()
     else:
         all_seats = Seat.objects.filter(theater=theater, is_active=True).order_by('seat_number')
 

@@ -49,11 +49,11 @@
       </div>
 
       <!-- Live 2-Minute Reservation Timer Banner -->
-      <div id="reservationTimerBar" class="alert alert-warning shadow-sm border-warning mb-4 d-none align-items-center justify-content-between">
+      <div id="reservationTimerBar" class="alert alert-warning shadow-sm border-warning mb-4 align-items-center justify-content-between" style="display: none;">
         <div>
           <i class="fas fa-hourglass-half text-danger mr-2"></i>
           <strong>Seats Reserved & Held:</strong> <span id="reservedSeatsBadge" class="badge badge-dark"></span>
-          <small class="text-muted ml-2">(Hold expires in <strong text-danger id="timerCountdown">02:00</strong>)</small>
+          <small class="text-muted ml-2">(Hold expires in <strong class="text-danger" id="timerCountdown">02:00</strong>)</small>
         </div>
         <button type="button" id="releaseTimerBtn" class="btn btn-sm btn-outline-danger">Release Reservation</button>
       </div>
@@ -253,8 +253,7 @@
         return;
       }
 
-      timerBar.classList.remove('d-none');
-      timerBar.classList.add('d-flex');
+      timerBar.style.display = 'flex';
 
       function tick() {
         if (seconds <= 0) {
@@ -276,8 +275,7 @@
 
     function stopTimer() {
       if (countdownInterval) clearInterval(countdownInterval);
-      timerBar.classList.remove('d-flex');
-      timerBar.classList.add('d-none');
+      timerBar.style.display = 'none';
     }
 
     function syncReservationWithServer(seatIds) {

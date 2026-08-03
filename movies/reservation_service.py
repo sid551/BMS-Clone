@@ -53,6 +53,11 @@ def reserve_seats(user, schedule_id, seat_ids):
     if not seat_ids:
         raise ValueError('No seats selected.')
 
+    if not ShowSeat.objects.filter(show_schedule_id=schedule_id).exists():
+        sch = ShowSchedule.objects.select_related('screen').filter(pk=schedule_id).first()
+        if sch and sch.screen:
+            sch._generate_show_seats()
+
     # Step 1 — expire stale (outside lock, safe bulk update)
     _release_stale(schedule_id)
 

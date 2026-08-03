@@ -5,6 +5,7 @@ from django.test import TransactionTestCase
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.db import connection, transaction
+from django.urls import reverse
 
 from movies.models import (
     Movie, Theater, Screen, Seat, ShowSchedule, ShowSeat, Booking, BookingSeat
@@ -313,7 +314,50 @@ class SmartSeatReservationTestSuite(TransactionTestCase):
             reserve_seats(self.user_b, self.schedule.id, [999999])
         self.assertIn("do not belong to this schedule", str(ctx5.exception))
 
-    def test_11_stress_test(self):
+    def test_11_refresh_behaviour(self):
+        """Test 11 – Refresh Behaviour: Reservation persistence before booking and permanent booked state after booking across refreshes"""
+        seats = list(Seat.objects.filter(screen=self.screen).order_by('id')[:2])
+        seat_ids = [s.id for s in seats]
+
+        # 1. User A reserves seats
+        self.client.login(username='user_a', password='password123')
+        reserved = reserve_seats(self.user_a, self.schedule.id, seat_ids)
+        self.assertEqual(len(reserved), 2)
+
+        # 2. Refresh browser / query reservation status API
+        status_resp = self.client.get(reverse('reservation_status_api', args=[self.schedule.id]))
+        self.assertEqual(status_resp.status_code, 200)
+        data = status_resp.json()
+        self.assertFalse(data['expired'])
+        self.assertEqual(len(data['seats']), 2)
+        self.assertGreater(data['seconds_remaining'], 0)
+
+        # 3. User B refreshes seat map (query seat map API)
+        self.client.login(username='user_b', password='password123')
+        seat_map_resp = self.client.get(reverse('seat_map_api', args=[self.schedule.id]))
+        self.assertEqual(seat_map_resp.status_code, 200)
+        map_data = seat_map_resp.json()
+
+        # Verify reserved seats show as unavailable to User B in seat map
+        reserved_seat_ids = [s['seat_id'] for row in map_data['rows'].values() for s in row if s['status'] in ['reserved', 'booked'] and not s['is_mine']]
+        for sid in seat_ids:
+            self.assertIn(sid, reserved_seat_ids)
+
+        # 4. Confirm booking for User A
+        self.client.login(username='user_a', password='password123')
+        booking = confirm_booking(self.user_a, self.schedule.id)
+        self.assertIsNotNone(booking)
+
+        # 5. Refresh again after booking
+        refresh_map_resp = self.client.get(reverse('seat_map_api', args=[self.schedule.id]))
+        refresh_map_data = refresh_map_resp.json()
+
+        # Verify booked seats remain permanently booked (status='booked')
+        booked_in_map = [s['seat_id'] for row in refresh_map_data['rows'].values() for s in row if s['status'] == 'booked']
+        for sid in seat_ids:
+            self.assertIn(sid, booked_in_map)
+
+    def test_12_stress_test(self):
         """Test 11 – Stress Test: Multiple users reserving non-overlapping seats"""
         all_seats = list(Seat.objects.filter(screen=self.screen).order_by('id')[:20])
         users = [

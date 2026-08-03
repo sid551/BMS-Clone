@@ -41,6 +41,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.middleware.gzip.GZipMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -48,6 +49,14 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# High-performance In-Memory Caching
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'bookmyshow-cache-locmem',
+    }
+}
 
 AUTH_USER_MODEL = 'auth.User'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
@@ -83,11 +92,14 @@ if os.environ.get('USE_SQLITE') == '1':
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'CONN_MAX_AGE': 60,
         }
     }
 else:
     DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://django_bookmyshow_nrpj_user:mX2JtOpVo7qZH4cAjr28F9o2LLtJUBzU@dpg-d9n1g9h42hec73enc9pg-a.singapore-postgres.render.com/django_bookmyshow_nrpj')
-    DATABASES = {'default': dj_database_url.parse(DATABASE_URL)}
+    parsed_db = dj_database_url.parse(DATABASE_URL)
+    parsed_db['CONN_MAX_AGE'] = 60
+    DATABASES = {'default': parsed_db}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

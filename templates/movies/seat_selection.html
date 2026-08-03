@@ -326,10 +326,17 @@
         selectedText.innerHTML = '<strong>' + selected.join(', ') + '</strong> (' + selected.length + ' seat' + (selected.length > 1 ? 's' : '') + ')';
         totalPriceElem.textContent = total.toFixed(2);
         if (bookBtn) bookBtn.disabled = false;
+
+        // Instant Optimistic Timer Display (Zero Latency)
+        reservedBadge.textContent = selected.join(', ');
+        if (!countdownInterval) {
+          startTimer(120);
+        }
       } else {
         selectedText.innerHTML = '<em class="text-muted">No seats selected</em>';
         totalPriceElem.textContent = '0';
         if (bookBtn) bookBtn.disabled = true;
+        stopTimer();
       }
 
       if (triggerApi !== false) {

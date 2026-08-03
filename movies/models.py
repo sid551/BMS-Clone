@@ -377,6 +377,8 @@ class ShowSeat(models.Model):
         ('booked', 'Booked'),
     ]
 
+    RESERVATION_MINUTES = 2
+
     show_schedule = models.ForeignKey(
         ShowSchedule, on_delete=models.CASCADE, related_name='show_seats'
     )
@@ -385,15 +387,45 @@ class ShowSeat(models.Model):
     )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='available')
 
+    # Reservation fields
+    reserved_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='reserved_seats'
+    )
+    reserved_until = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         unique_together = ('show_schedule', 'seat')
         ordering = ['seat__row', 'seat__number']
         indexes = [
             models.Index(fields=['show_schedule', 'status']),
+            models.Index(fields=['reserved_until']),
         ]
 
     def __str__(self):
         return f'{self.seat.seat_number} [{self.status}] — {self.show_schedule}'
+
+    @property
+    def is_reservation_expired(self):
+        """True if reserved but expiry has passed."""
+        if self.status == 'reserved' and self.reserved_until:
+            return timezone.now() > self.reserved_until
+        return False
+
+    @property
+    def seconds_remaining(self):
+        """Seconds left in reservation, 0 if expired or not reserved."""
+        if self.status == 'reserved' and self.reserved_until:
+            delta = self.reserved_until - timezone.now()
+            return max(0, int(delta.total_seconds()))
+        return 0
+
+    def release(self):
+        """Release this reservation and mark seat available."""
+        self.status = 'available'
+        self.reserved_by = None
+        self.reserved_until = None
+        self.save(update_fields=['status', 'reserved_by', 'reserved_until'])
 
 
 

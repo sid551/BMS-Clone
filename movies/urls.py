@@ -11,6 +11,9 @@ urlpatterns = [
     path('review/<int:review_id>/delete/', views.delete_review, name='delete_review'),
     path('review/<int:review_id>/report/', views.report_review, name='report_review'),
     path('schedule/<int:schedule_id>/seats/', views.seat_map_api, name='seat_map_api'),
+    path('schedule/<int:schedule_id>/reserve/', views.reserve_seats_api, name='reserve_seats_api'),
+    path('schedule/<int:schedule_id>/release/', views.release_seats_api, name='release_seats_api'),
+    path('schedule/<int:schedule_id>/reservation-status/', views.reservation_status_api, name='reservation_status_api'),
 
     # Custom Admin Management Routes
     path('manage/', views.admin_dashboard, name='admin_dashboard'),

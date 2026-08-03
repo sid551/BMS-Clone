@@ -389,31 +389,35 @@ def report_review(request, review_id):
 def seat_map_api(request, schedule_id):
     """
     JSON API — returns all seats for a show schedule with their current status.
-    Used by the frontend to render a live seat map.
+    Expires stale reservations before returning data.
     """
+    from .reservation_service import _expire_stale_reservations_by_id
     schedule = get_object_or_404(
         ShowSchedule.objects.select_related('screen', 'theater', 'movie'),
         id=schedule_id
     )
 
-    # Auto-generate ShowSeat records if they don't exist yet
+    # Auto-generate ShowSeat records if missing
     if not schedule.show_seats.exists() and schedule.screen:
         schedule._generate_show_seats()
 
+    # Clean up expired reservations before serving
+    _expire_stale_reservations_by_id(schedule_id)
+
     show_seats = (
         schedule.show_seats
-        .select_related('seat')
+        .select_related('seat', 'reserved_by')
         .order_by('seat__row', 'seat__number')
     )
 
-    # Group by row for easier frontend rendering
+    current_user_id = request.user.id if request.user.is_authenticated else None
+
     rows = {}
     for ss in show_seats:
         seat = ss.seat
         row = seat.row
-        if row not in rows:
-            rows[row] = []
-        rows[row].append({
+        is_mine = (ss.reserved_by_id == current_user_id and ss.status == 'reserved')
+        rows.setdefault(row, []).append({
             'id': ss.id,
             'seat_id': seat.id,
             'seat_number': seat.seat_number,
@@ -424,6 +428,8 @@ def seat_map_api(request, schedule_id):
             'price': seat.calculate_price(schedule.price),
             'status': ss.status,
             'is_active': seat.is_active,
+            'is_mine': is_mine,
+            'seconds_remaining': ss.seconds_remaining if is_mine else 0,
         })
 
     return JsonResponse({
@@ -442,6 +448,71 @@ def seat_map_api(request, schedule_id):
             'reserved': show_seats.filter(status='reserved').count(),
         }
     })
+
+
+@login_required(login_url='/login/')
+def reserve_seats_api(request, schedule_id):
+    """
+    POST /movies/schedule/<id>/reserve/
+    Body: { "seat_ids": [1, 2, 3] }
+    Reserves selected seats for 2 minutes. Releases any prior reservations by this user.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    import json
+    from .reservation_service import reserve_seats
+
+    try:
+        data = json.loads(request.body)
+        seat_ids = data.get('seat_ids', [])
+        if not isinstance(seat_ids, list):
+            raise ValueError('seat_ids must be a list.')
+        reserved = reserve_seats(request.user, schedule_id, seat_ids)
+    except (ValueError, KeyError) as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except ShowSchedule.DoesNotExist:
+        return JsonResponse({'error': 'Schedule not found.'}, status=404)
+
+    expiry = reserved[0].reserved_until if reserved else None
+    return JsonResponse({
+        'reserved': [
+            {
+                'show_seat_id': ss.pk,
+                'seat_number': ss.seat.seat_number,
+                'seat_type': ss.seat.get_seat_type_display(),
+                'price': ss.seat.calculate_price(ShowSchedule.objects.get(pk=schedule_id).price),
+            }
+            for ss in reserved
+        ],
+        'expires_at': expiry.isoformat() if expiry else None,
+        'seconds_remaining': reserved[0].seconds_remaining if reserved else 0,
+    })
+
+
+@login_required(login_url='/login/')
+def release_seats_api(request, schedule_id):
+    """
+    POST /movies/schedule/<id>/release/
+    Releases all seats currently reserved by this user for the schedule.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    from .reservation_service import release_user_reservations
+    count = release_user_reservations(request.user, schedule_id)
+    return JsonResponse({'released': count})
+
+
+@login_required(login_url='/login/')
+def reservation_status_api(request, schedule_id):
+    """
+    GET /movies/schedule/<id>/reservation-status/
+    Returns remaining time and seat list for this user's current reservation.
+    """
+    from .reservation_service import get_reservation_status
+    status = get_reservation_status(request.user, schedule_id)
+    return JsonResponse(status)
 
 
 # ---------------------------------------------------------------------------

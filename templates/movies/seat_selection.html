@@ -376,6 +376,43 @@
         }
       })
       .catch(function(err) { console.error('Error fetching reservation status:', err); });
+
+      // Live Background Poll every 4 seconds to sync reserved/sold seats across browsers
+      function pollLiveSeatMap() {
+        fetch('/movies/schedule/' + scheduleId + '/seats/')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (!data || !data.rows) return;
+          var unavailableSeatIds = [];
+          for (var r in data.rows) {
+            data.rows[r].forEach(function(s) {
+              if (s.is_booked || s.is_reserved_by_other || s.status === 'booked' || (s.status === 'reserved' && !s.is_mine)) {
+                unavailableSeatIds.push(s.seat_id);
+              }
+            });
+          }
+          checkboxes.forEach(function(cb) {
+            var seatId = parseInt(cb.value);
+            var label = document.querySelector('label[for="' + cb.id + '"]');
+            if (unavailableSeatIds.indexOf(seatId) !== -1 && !cb.checked) {
+              cb.disabled = true;
+              if (label) {
+                label.classList.add('sold');
+                label.style.pointerEvents = 'none';
+              }
+            } else if (cb.disabled) {
+              cb.disabled = false;
+              if (label) {
+                label.classList.remove('sold');
+                label.style.pointerEvents = 'auto';
+              }
+            }
+          });
+        })
+        .catch(function(e) { console.error('Poll error:', e); });
+      }
+
+      setInterval(pollLiveSeatMap, 4000);
     }
   });
 </script>

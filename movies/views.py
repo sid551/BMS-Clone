@@ -65,13 +65,28 @@ def book_seats(request, theater_id):
     else:
         all_seats = Seat.objects.filter(theater=theater, is_active=True).order_by('seat_number')
 
-    # Get already booked seat IDs for this specific schedule
+    # Get already booked or active reserved seat IDs for this specific schedule
     booked_seat_ids = set()
+    confirmed_booked_ids = set()
     if schedule:
-        booked_seat_ids = set(
+        from .reservation_service import _release_stale
+        _release_stale(schedule.id)
+
+        now = timezone.now()
+        confirmed_booked_ids = set(
             BookingSeat.objects.filter(show_schedule=schedule)
             .values_list('seat_id', flat=True)
         )
+        reserved_by_others_ids = set(
+            ShowSeat.objects.filter(
+                show_schedule=schedule,
+                status__in=['booked', 'reserved'],
+                reserved_until__gt=now
+            )
+            .exclude(reserved_by=request.user)
+            .values_list('seat_id', flat=True)
+        )
+        booked_seat_ids = confirmed_booked_ids | reserved_by_others_ids
     else:
         booked_seat_ids = set(Seat.objects.filter(theater=theater, is_booked=True).values_list('id', flat=True))
 
@@ -118,8 +133,19 @@ def book_seats(request, theater_id):
                 'error': f'Not enough seats available. Only {schedule.available_seats} left.',
             })
 
-        # Ensure none of selected seats are already booked
-        already_booked = set(selected_seat_ids) & booked_seat_ids
+        # Ensure none of selected seats are already booked or held by another user
+        now = timezone.now()
+        currently_held_by_others = set(
+            ShowSeat.objects.filter(
+                show_schedule=schedule,
+                seat_id__in=selected_seat_ids,
+                status__in=['booked', 'reserved'],
+                reserved_until__gt=now
+            )
+            .exclude(reserved_by=request.user)
+            .values_list('seat_id', flat=True)
+        )
+        already_booked = (set(selected_seat_ids) & confirmed_booked_ids) | currently_held_by_others
         if already_booked:
             return render(request, 'movies/seat_selection.html', {
                 'theaters': theater,
@@ -127,7 +153,7 @@ def book_seats(request, theater_id):
                 'screen': screen,
                 'tier_groups': tier_groups,
                 'tier_prices': tier_prices,
-                'error': 'One or more of your selected seats were just booked by another user. Please choose available seats.',
+                'error': 'One or more of your selected seats are currently reserved or booked by another user. Please choose available seats.',
             })
 
         # Calculate exact total price per selected seat
@@ -162,6 +188,12 @@ def book_seats(request, theater_id):
             if schedule:
                 schedule.available_seats = max(0, schedule.available_seats - number_of_seats)
                 schedule.save(update_fields=['available_seats'])
+                # Mark ShowSeat status as booked
+                ShowSeat.objects.filter(show_schedule=schedule, seat_id__in=selected_seat_ids).update(
+                    status='booked',
+                    reserved_by=None,
+                    reserved_until=None
+                )
 
             # Mark seat as booked globally for fallback
             chosen_seats.update(is_booked=True)

@@ -10,6 +10,7 @@ urlpatterns = [
     path('review/<int:review_id>/edit/', views.edit_review, name='edit_review'),
     path('review/<int:review_id>/delete/', views.delete_review, name='delete_review'),
     path('review/<int:review_id>/report/', views.report_review, name='report_review'),
+    path('schedule/<int:schedule_id>/seats/', views.seat_map_api, name='seat_map_api'),
 
     # Custom Admin Management Routes
     path('manage/', views.admin_dashboard, name='admin_dashboard'),
@@ -41,4 +42,4 @@ urlpatterns = [
 
 
 
-
+

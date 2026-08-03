@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q, Count
 from django.utils import timezone
 from .models import (
-    Movie, MovieImage, Genre, Language, CastMember, Theater, Screen, Seat, Booking,
+    Movie, MovieImage, Genre, Language, CastMember, Theater, Screen, Seat, ShowSeat, Booking,
     ShowSchedule, BookingSeat, Review, ReportedReview
 )
 from .forms import (
@@ -383,6 +383,64 @@ def report_review(request, review_id):
     return render(request, 'movies/report_review.html', {
         'form': form,
         'review': review,
+    })
+
+
+def seat_map_api(request, schedule_id):
+    """
+    JSON API — returns all seats for a show schedule with their current status.
+    Used by the frontend to render a live seat map.
+    """
+    schedule = get_object_or_404(
+        ShowSchedule.objects.select_related('screen', 'theater', 'movie'),
+        id=schedule_id
+    )
+
+    # Auto-generate ShowSeat records if they don't exist yet
+    if not schedule.show_seats.exists() and schedule.screen:
+        schedule._generate_show_seats()
+
+    show_seats = (
+        schedule.show_seats
+        .select_related('seat')
+        .order_by('seat__row', 'seat__number')
+    )
+
+    # Group by row for easier frontend rendering
+    rows = {}
+    for ss in show_seats:
+        seat = ss.seat
+        row = seat.row
+        if row not in rows:
+            rows[row] = []
+        rows[row].append({
+            'id': ss.id,
+            'seat_id': seat.id,
+            'seat_number': seat.seat_number,
+            'row': seat.row,
+            'number': seat.number,
+            'seat_type': seat.seat_type,
+            'seat_type_label': seat.get_seat_type_display(),
+            'price': seat.calculate_price(schedule.price),
+            'status': ss.status,
+            'is_active': seat.is_active,
+        })
+
+    return JsonResponse({
+        'schedule_id': schedule.id,
+        'movie': schedule.movie.title,
+        'theater': schedule.theater.name,
+        'screen': schedule.screen.name if schedule.screen else None,
+        'show_time': schedule.show_time.isoformat(),
+        'base_price': float(schedule.price),
+        'available_seats': schedule.available_seats,
+        'rows': rows,
+        'summary': {
+            'total': show_seats.count(),
+            'available': show_seats.filter(status='available').count(),
+            'booked': show_seats.filter(status='booked').count(),
+            'reserved': show_seats.filter(status='reserved').count(),
+        }
     })
 
 

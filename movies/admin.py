@@ -11,7 +11,7 @@ from .models import (
     Genre, Language, CastMember,
     Movie, MovieImage,
     Theater, Screen, ShowSchedule,
-    Seat, Booking, BookingSeat, Review, ReportedReview,
+    Seat, ShowSeat, Booking, BookingSeat, Review, ReportedReview,
 )
 
 
@@ -373,6 +373,32 @@ class BookingSeatAdmin(admin.ModelAdmin):
     list_display = ['booking', 'show_schedule', 'seat', 'price']
     list_filter = ['show_schedule__movie', 'show_schedule__theater']
     search_fields = ['booking__booking_reference', 'seat__seat_number']
+
+
+@admin.register(ShowSeat)
+class ShowSeatAdmin(admin.ModelAdmin):
+    list_display = ['seat', 'show_schedule', 'status', 'seat_type', 'row']
+    list_filter = ['status', 'seat__seat_type', 'show_schedule__movie', 'show_schedule__theater']
+    search_fields = ['seat__seat_number', 'show_schedule__movie__title', 'show_schedule__theater__name']
+    actions = ['mark_available', 'mark_booked']
+
+    def seat_type(self, obj):
+        return obj.seat.get_seat_type_display()
+    seat_type.short_description = 'Seat Type'
+
+    def row(self, obj):
+        return obj.seat.row
+    row.short_description = 'Row'
+
+    def mark_available(self, request, queryset):
+        updated = queryset.update(status='available')
+        self.message_user(request, f'{updated} seat(s) marked as Available.')
+    mark_available.short_description = 'Mark selected as Available'
+
+    def mark_booked(self, request, queryset):
+        updated = queryset.update(status='booked')
+        self.message_user(request, f'{updated} seat(s) marked as Booked.')
+    mark_booked.short_description = 'Mark selected as Booked'
 
 
 # ---------------------------------------------------------------------------

@@ -302,11 +302,17 @@ class ShowSchedule(models.Model):
         elif max_cap > 0 and self.available_seats > max_cap:
             self.available_seats = max_cap
 
+        is_new = self.pk is None
         super().save(*args, **kwargs)
+        if is_new and self.screen_id:
+            self._generate_show_seats()
 
-
-
-
+    def _generate_show_seats(self):
+        seats = self.screen.seats.filter(is_active=True)
+        ShowSeat.objects.bulk_create(
+            [ShowSeat(show_schedule=self, seat=seat, status='available') for seat in seats],
+            ignore_conflicts=True
+        )
 
     def __str__(self):
         screen_str = f' [{self.screen.name}]' if self.screen else ''
@@ -358,6 +364,36 @@ class BookingSeat(models.Model):
 
     def __str__(self):
         return f'{self.seat.seat_number} for Schedule #{self.show_schedule_id}'
+
+
+# ---------------------------------------------------------------------------
+# Per-schedule seat status (the live seat map)
+# ---------------------------------------------------------------------------
+
+class ShowSeat(models.Model):
+    STATUS_CHOICES = [
+        ('available', 'Available'),
+        ('reserved', 'Reserved'),
+        ('booked', 'Booked'),
+    ]
+
+    show_schedule = models.ForeignKey(
+        ShowSchedule, on_delete=models.CASCADE, related_name='show_seats'
+    )
+    seat = models.ForeignKey(
+        Seat, on_delete=models.CASCADE, related_name='show_seats'
+    )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='available')
+
+    class Meta:
+        unique_together = ('show_schedule', 'seat')
+        ordering = ['seat__row', 'seat__number']
+        indexes = [
+            models.Index(fields=['show_schedule', 'status']),
+        ]
+
+    def __str__(self):
+        return f'{self.seat.seat_number} [{self.status}] — {self.show_schedule}'
 
 
 

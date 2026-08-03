@@ -28,18 +28,16 @@ def is_staff_user(user):
 
 def movie_list(request):
     search_query = request.GET.get('search')
+    movies = Movie.objects.prefetch_related('genres', 'languages')
     if search_query:
-        movies = Movie.objects.filter(title__icontains=search_query)
-    else:
-        movies = Movie.objects.all()
+        movies = movies.filter(title__icontains=search_query)
     return render(request, 'movies/movie_list.html', {'movies': movies})
 
 
 def theater_list(request, movie_id):
     movie = get_object_or_404(Movie, id=movie_id)
-    # Support both legacy Theater FK and new ShowSchedule
-    schedules = ShowSchedule.objects.filter(movie=movie).select_related('theater')
-    theaters = Theater.objects.filter(movie=movie)
+    schedules = ShowSchedule.objects.filter(movie=movie).select_related('theater', 'screen')
+    theaters = Theater.objects.filter(schedules__movie=movie).distinct().prefetch_related('screens')
     return render(request, 'movies/theater_list.html', {
         'movie': movie,
         'theaters': theaters,
@@ -603,7 +601,7 @@ def admin_dashboard(request):
 @user_passes_test(is_staff_user, login_url='/login/')
 def admin_manage_movies(request):
     search = request.GET.get('search', '').strip()
-    movies = Movie.objects.all()
+    movies = Movie.objects.prefetch_related('genres', 'languages').all()
     if search:
         movies = movies.filter(title__icontains=search)
     return render(request, 'movies/custom_admin/manage_movies.html', {
@@ -646,8 +644,61 @@ def admin_movie_delete(request, movie_id):
 
 
 @user_passes_test(is_staff_user, login_url='/login/')
+def admin_manage_theaters(request):
+    search = request.GET.get('search', '').strip()
+    theaters = (
+        Theater.objects
+        .annotate(
+            screens_count=Count('screens', distinct=True),
+            schedules_count=Count('schedules', distinct=True),
+        )
+        .order_by('name')
+    )
+    if search:
+        theaters = theaters.filter(Q(name__icontains=search) | Q(location__icontains=search))
+
+    return render(request, 'movies/custom_admin/manage_theaters.html', {
+        'theaters': theaters,
+        'search': search,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_theater_form(request, theater_id=None):
+    theater = get_object_or_404(Theater, id=theater_id) if theater_id else None
+    if request.method == 'POST':
+        form = TheaterForm(request.POST, instance=theater)
+        if form.is_valid():
+            saved_theater = form.save()
+            messages.success(request, f'Theater "{saved_theater.name}" saved successfully.')
+            return redirect('admin_manage_theaters')
+    else:
+        form = TheaterForm(instance=theater)
+
+    return render(request, 'movies/custom_admin/theater_form.html', {
+        'form': form,
+        'theater': theater,
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
+def admin_theater_delete(request, theater_id):
+    theater = get_object_or_404(Theater, id=theater_id)
+    if request.method == 'POST':
+        name = theater.name
+        theater.delete()
+        messages.success(request, f'Theater "{name}" and connected screens/schedules deleted.')
+        return redirect('admin_manage_theaters')
+    return render(request, 'movies/custom_admin/confirm_delete.html', {
+        'object': theater,
+        'type': 'Theater',
+        'cancel_url': 'admin_manage_theaters'
+    })
+
+
+@user_passes_test(is_staff_user, login_url='/login/')
 def admin_manage_schedules(request):
-    schedules = ShowSchedule.objects.select_related('movie', 'theater').order_by('-show_time')
+    schedules = ShowSchedule.objects.select_related('movie', 'theater', 'screen').order_by('-show_time')
     return render(request, 'movies/custom_admin/manage_schedules.html', {
         'schedules': schedules,
     })
@@ -784,24 +835,35 @@ def admin_manage_taxonomies(request):
 
 @user_passes_test(is_staff_user, login_url='/login/')
 def admin_manage_screens(request):
-    screens = Screen.objects.select_related('theater').prefetch_related('seats').all()
+    theater_id = request.GET.get('theater_id')
+    screens = Screen.objects.select_related('theater').annotate(seat_count=Count('seats', distinct=True)).order_by('theater__name', 'name')
+    selected_theater = None
+    if theater_id:
+        selected_theater = get_object_or_404(Theater, id=theater_id)
+        screens = screens.filter(theater=selected_theater)
+
     return render(request, 'movies/custom_admin/manage_screens.html', {
         'screens': screens,
+        'selected_theater': selected_theater,
+        'theaters': Theater.objects.order_by('name'),
     })
 
 
 @user_passes_test(is_staff_user, login_url='/login/')
 def admin_screen_form(request, screen_id=None):
     screen = get_object_or_404(Screen, id=screen_id) if screen_id else None
+    theater_id = request.GET.get('theater_id')
+
     if request.method == 'POST':
         form = ScreenForm(request.POST, instance=screen)
         if form.is_valid():
             saved_screen = form.save()
             saved_screen.generate_seats()
             messages.success(request, f'Screen "{saved_screen.name}" saved and seat grid generated ({saved_screen.total_seats} seats).')
-            return redirect('admin_manage_screens')
+            return redirect(f"{reverse('admin_manage_screens')}?theater_id={saved_screen.theater.id}")
     else:
-        form = ScreenForm(instance=screen)
+        initial = {'theater': theater_id} if (theater_id and not screen) else {}
+        form = ScreenForm(instance=screen, initial=initial)
 
     return render(request, 'movies/custom_admin/screen_form.html', {
         'form': form,

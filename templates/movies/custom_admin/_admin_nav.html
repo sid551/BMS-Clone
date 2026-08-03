@@ -14,6 +14,10 @@
           <i class="fas fa-film mr-1"></i>Movies
         </a>
 
+        <a href="{% url 'admin_manage_theaters' %}" class="btn btn-sm text-white mr-1 {% if 'theater' in request.resolver_match.url_name %}btn-primary font-weight-bold{% endif %}">
+          <i class="fas fa-building mr-1"></i>Theaters
+        </a>
+
         <a href="{% url 'admin_manage_schedules' %}" class="btn btn-sm text-white mr-1 {% if 'schedule' in request.resolver_match.url_name %}btn-primary font-weight-bold{% endif %}">
           <i class="fas fa-calendar-alt mr-1"></i>Schedules
         </a>

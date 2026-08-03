@@ -198,13 +198,15 @@ class Screen(models.Model):
     def total_seats(self):
         return self.total_rows * self.seats_per_row
 
-    def generate_seats(self):
+    def generate_seats(self, force_resync=False):
         """Auto-generate seat layout grid for this screen if not present."""
         import string
         rows = list(string.ascii_uppercase[:min(self.total_rows, 26)])
 
         if self.seats.exists():
-            # Re-sync tiers if seats already exist
+            if not force_resync:
+                return
+            # Re-sync tiers if forced
             for row_idx, row_name in enumerate(rows):
                 if row_idx < max(1, int(len(rows) * 0.40)):
                     stype, mult = 'regular', 1.00

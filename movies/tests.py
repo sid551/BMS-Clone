@@ -210,6 +210,40 @@ class MovieManagementTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Movie Management Admin Panel')
 
+    def test_admin_theater_management(self):
+        self.client.login(username='admin', password='adminpassword')
+
+        # 1. Access manage theaters list view
+        resp = self.client.get(reverse('admin_manage_theaters'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Manage Theaters')
+
+        # 2. Add a new theater
+        post_resp = self.client.post(reverse('admin_theater_add'), {
+            'name': 'INOX Megaplex',
+            'location': 'Vasant Kunj',
+            'total_seats': 150,
+        })
+        self.assertEqual(post_resp.status_code, 302)
+        created_theater = Theater.objects.filter(name='INOX Megaplex').first()
+        self.assertIsNotNone(created_theater)
+        self.assertEqual(created_theater.location, 'Vasant Kunj')
+
+        # 3. Edit theater
+        edit_resp = self.client.post(reverse('admin_theater_edit', args=[created_theater.id]), {
+            'name': 'INOX Megaplex VIP',
+            'location': 'Vasant Kunj Mall',
+            'total_seats': 180,
+        })
+        self.assertEqual(edit_resp.status_code, 302)
+        created_theater.refresh_from_db()
+        self.assertEqual(created_theater.name, 'INOX Megaplex VIP')
+
+        # 4. Delete theater
+        del_resp = self.client.post(reverse('admin_theater_delete', args=[created_theater.id]))
+        self.assertEqual(del_resp.status_code, 302)
+        self.assertFalse(Theater.objects.filter(id=created_theater.id).exists())
+
     def test_screen_and_seat_management_system(self):
         from .models import Screen, Seat, BookingSeat
 

@@ -1,0 +1,40 @@
+{% extends "users/basic.html" %}
+
+{% block title %}{% if theater %}Edit Theater{% else %}Add Theater{% endif %} - Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  {% include 'movies/custom_admin/_admin_nav.html' %}
+  
+  <a href="{% url 'admin_manage_theaters' %}" class="text-muted small">&laquo; Back to Theaters</a>
+  <h2 class="mb-4"><i class="fas fa-building text-primary mr-2"></i>{% if theater %}Edit Theater: {{ theater.name }}{% else %}Add New Theater & Venue{% endif %}</h2>
+
+  <div class="card shadow-sm" style="max-width: 600px;">
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="font-weight-bold">Theater Name *</label>
+          {{ form.name }}
+          <small class="text-muted">e.g. PVR Cyber Hub, INOX Megaplex, Cinepolis</small>
+        </div>
+        <div class="form-group">
+          <label class="font-weight-bold">Location / Address</label>
+          {{ form.location }}
+          <small class="text-muted">e.g. Downtown Gurgaon, Mall of India Noida</small>
+        </div>
+        <div class="form-group">
+          <label class="font-weight-bold">Total Seats (Capacity)</label>
+          {{ form.total_seats }}
+          <small class="text-muted">Auto-calculated from screens if screens are added, or specify manual capacity</small>
+        </div>
+
+        <div class="border-top pt-3 text-right">
+          <a href="{% url 'admin_manage_theaters' %}" class="btn btn-secondary mr-2">Cancel</a>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Save Theater</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

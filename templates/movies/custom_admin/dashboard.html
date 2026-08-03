@@ -39,12 +39,14 @@
       </div>
     </div>
     <div class="col-md-3 col-6 mb-3">
-      <div class="card bg-info text-white shadow-sm">
-        <div class="card-body text-center">
-          <h3 class="display-4 font-weight-bold mb-0">{{ theater_count }}</h3>
-          <p class="mb-0 font-weight-light">Theaters</p>
+      <a href="{% url 'admin_manage_theaters' %}" class="text-white text-decoration-none">
+        <div class="card bg-info text-white shadow-sm">
+          <div class="card-body text-center">
+            <h3 class="display-4 font-weight-bold mb-0">{{ theater_count }}</h3>
+            <p class="mb-0 font-weight-light">Theaters</p>
+          </div>
         </div>
-      </div>
+      </a>
     </div>
     <div class="col-md-3 col-6 mb-3">
       <div class="card bg-warning text-dark shadow-sm">
@@ -66,6 +68,11 @@
         <div class="col-md-3 mb-2">
           <a href="{% url 'admin_manage_movies' %}" class="btn btn-outline-primary btn-block p-3">
             <i class="fas fa-film fa-2x mb-2 d-block"></i> Manage Movies
+          </a>
+        </div>
+        <div class="col-md-3 mb-2">
+          <a href="{% url 'admin_manage_theaters' %}" class="btn btn-outline-info btn-block p-3">
+            <i class="fas fa-building fa-2x mb-2 d-block"></i> Manage Theaters
           </a>
         </div>
         <div class="col-md-3 mb-2">

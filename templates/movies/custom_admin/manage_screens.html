@@ -6,12 +6,11 @@
 <div class="container py-4">
   {% include 'movies/custom_admin/_admin_nav.html' %}
   <div class="d-flex justify-content-between align-items-center mb-3">
-
     <div>
       <a href="{% url 'admin_dashboard' %}" class="text-muted small">&laquo; Back to Admin Dashboard</a>
       <h2 class="mb-0">Manage Theater Screens</h2>
     </div>
-    <a href="{% url 'admin_screen_add' %}" class="btn btn-primary">
+    <a href="{% url 'admin_screen_add' %}{% if selected_theater %}?theater_id={{ selected_theater.id }}{% endif %}" class="btn btn-primary">
       <i class="fas fa-desktop mr-1"></i> Add New Screen
     </a>
   </div>
@@ -22,6 +21,26 @@
       <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
     </div>
   {% endfor %}
+
+  <!-- Filter by Theater -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body py-2 px-3">
+      <form method="get" class="form-inline d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+          <label class="mr-2 font-weight-bold mb-0"><i class="fas fa-filter text-muted mr-1"></i>Filter by Theater:</label>
+          <select name="theater_id" class="form-control form-control-sm mr-2" onchange="this.form.submit()">
+            <option value="">-- All Theaters --</option>
+            {% for t in theaters %}
+              <option value="{{ t.id }}" {% if selected_theater and selected_theater.id == t.id %}selected{% endif %}>{{ t.name }} ({{ t.location }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% if selected_theater %}
+          <a href="{% url 'admin_manage_screens' %}" class="btn btn-sm btn-link text-muted">Show All Screens</a>
+        {% endif %}
+      </form>
+    </div>
+  </div>
 
   <div class="card shadow-sm">
     <div class="card-body p-0">

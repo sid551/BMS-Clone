@@ -515,6 +515,61 @@ def reservation_status_api(request, schedule_id):
     return JsonResponse(status)
 
 
+@login_required(login_url='/login/')
+def confirm_booking_api(request, schedule_id):
+    """
+    POST /movies/schedule/<id>/confirm-booking/
+
+    Atomically converts all reserved seats into a confirmed Booking.
+    Uses select_for_update() — safe under concurrent requests.
+
+    Success response:
+    {
+        "booking_reference": "BMS...",
+        "seats": [...],
+        "total_price": 450.00,
+        "available_seats": 74
+    }
+
+    Error response (400):
+    { "error": "Reservation expired for seats: A1, A2." }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required.'}, status=405)
+
+    from .reservation_service import confirm_booking
+
+    try:
+        booking = confirm_booking(request.user, schedule_id)
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except ShowSchedule.DoesNotExist:
+        return JsonResponse({'error': 'Schedule not found.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Booking failed: {str(e)}'}, status=500)
+
+    booked_seats = booking.booked_seats.select_related('seat').all()
+
+    return JsonResponse({
+        'success': True,
+        'booking_reference': booking.booking_reference,
+        'movie': booking.movie.title if booking.movie else '',
+        'theater': booking.theater.name if booking.theater else '',
+        'show_time': booking.show_schedule.show_time.isoformat(),
+        'seats': [
+            {
+                'seat_number': bs.seat.seat_number,
+                'seat_type': bs.seat.get_seat_type_display(),
+                'price': float(bs.price),
+            }
+            for bs in booked_seats
+        ],
+        'number_of_seats': booking.number_of_seats,
+        'total_price': float(booking.total_price),
+        'available_seats': booking.show_schedule.available_seats,
+    })
+
+
 # ---------------------------------------------------------------------------
 # Custom Admin Interface views (Staff required)
 # ---------------------------------------------------------------------------

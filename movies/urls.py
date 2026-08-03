@@ -14,6 +14,7 @@ urlpatterns = [
     path('schedule/<int:schedule_id>/reserve/', views.reserve_seats_api, name='reserve_seats_api'),
     path('schedule/<int:schedule_id>/release/', views.release_seats_api, name='release_seats_api'),
     path('schedule/<int:schedule_id>/reservation-status/', views.reservation_status_api, name='reservation_status_api'),
+    path('schedule/<int:schedule_id>/confirm-booking/', views.confirm_booking_api, name='confirm_booking_api'),
 
     # Custom Admin Management Routes
     path('manage/', views.admin_dashboard, name='admin_dashboard'),

@@ -48,6 +48,16 @@
         </div>
       </div>
 
+      <!-- Live 2-Minute Reservation Timer Banner -->
+      <div id="reservationTimerBar" class="alert alert-warning shadow-sm border-warning mb-4 d-none align-items-center justify-content-between">
+        <div>
+          <i class="fas fa-hourglass-half text-danger mr-2"></i>
+          <strong>Seats Reserved & Held:</strong> <span id="reservedSeatsBadge" class="badge badge-dark"></span>
+          <small class="text-muted ml-2">(Hold expires in <strong text-danger id="timerCountdown">02:00</strong>)</small>
+        </div>
+        <button type="button" id="releaseTimerBtn" class="btn btn-sm btn-outline-danger">Release Reservation</button>
+      </div>
+
       <!-- Main Visual Seat Map Container -->
       <div class="card shadow-sm mb-4">
         <div class="card-body">
@@ -227,9 +237,81 @@
     var selectedText = document.getElementById('selectedSeatsText');
     var totalPriceElem = document.getElementById('totalPrice');
     var bookBtn = document.getElementById('bookBtn');
+    var timerBar = document.getElementById('reservationTimerBar');
+    var timerCountdown = document.getElementById('timerCountdown');
+    var reservedBadge = document.getElementById('reservedSeatsBadge');
+    var releaseBtn = document.getElementById('releaseTimerBtn');
+    var scheduleId = "{% if schedule %}{{ schedule.id }}{% endif %}";
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
 
-    function updateSummary() {
+    var countdownInterval = null;
+
+    function startTimer(seconds) {
+      if (countdownInterval) clearInterval(countdownInterval);
+      if (seconds <= 0) {
+        stopTimer();
+        return;
+      }
+
+      timerBar.classList.remove('d-none');
+      timerBar.classList.add('d-flex');
+
+      function tick() {
+        if (seconds <= 0) {
+          clearInterval(countdownInterval);
+          timerCountdown.textContent = 'Expired';
+          alert('Your seat reservation has expired! Please select seats again.');
+          window.location.reload();
+          return;
+        }
+        var m = Math.floor(seconds / 60);
+        var s = seconds % 60;
+        timerCountdown.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        seconds--;
+      }
+
+      tick();
+      countdownInterval = setInterval(tick, 1000);
+    }
+
+    function stopTimer() {
+      if (countdownInterval) clearInterval(countdownInterval);
+      timerBar.classList.remove('d-flex');
+      timerBar.classList.add('d-none');
+    }
+
+    function syncReservationWithServer(seatIds) {
+      if (!scheduleId) return;
+
+      if (seatIds.length === 0) {
+        fetch('/movies/schedule/' + scheduleId + '/release/', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
+        }).then(function() {
+          stopTimer();
+        });
+        return;
+      }
+
+      fetch('/movies/schedule/' + scheduleId + '/reserve/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seat_ids: seatIds })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.seconds_remaining) {
+          var seatNums = data.reserved.map(function(r) { return r.seat_number; });
+          reservedBadge.textContent = seatNums.join(', ');
+          startTimer(data.seconds_remaining);
+        }
+      })
+      .catch(function(err) { console.error('Reservation error:', err); });
+    }
+
+    function updateSummary(triggerApi) {
       var selected = [];
+      var selectedIds = [];
       var total = 0;
 
       checkboxes.forEach(function(cb) {
@@ -237,6 +319,7 @@
           var num = cb.getAttribute('data-seat-number');
           var price = parseFloat(cb.getAttribute('data-price')) || 0;
           selected.push(num);
+          selectedIds.push(parseInt(cb.value));
           total += price;
         }
       });
@@ -250,11 +333,45 @@
         totalPriceElem.textContent = '0';
         if (bookBtn) bookBtn.disabled = true;
       }
+
+      if (triggerApi !== false) {
+        syncReservationWithServer(selectedIds);
+      }
     }
 
     checkboxes.forEach(function(cb) {
-      cb.addEventListener('change', updateSummary);
+      cb.addEventListener('change', function() {
+        updateSummary(true);
+      });
     });
+
+    if (releaseBtn) {
+      releaseBtn.addEventListener('click', function() {
+        checkboxes.forEach(function(cb) { cb.checked = false; });
+        updateSummary(true);
+      });
+    }
+
+    // Auto-Restore Active Reservation on Page Load / Refresh
+    if (scheduleId) {
+      fetch('/movies/schedule/' + scheduleId + '/reservation-status/')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.status === 'reserved' && data.seats && data.seats.length > 0) {
+          var reservedSeatIds = data.seats.map(function(s) { return s.seat_id; });
+          checkboxes.forEach(function(cb) {
+            if (reservedSeatIds.indexOf(parseInt(cb.value)) !== -1) {
+              cb.checked = true;
+            }
+          });
+          updateSummary(false);
+          var seatNums = data.seats.map(function(s) { return s.seat_number; });
+          reservedBadge.textContent = seatNums.join(', ');
+          startTimer(data.seconds_remaining);
+        }
+      })
+      .catch(function(err) { console.error('Error fetching reservation status:', err); });
+    }
   });
 </script>
 {% endblock %}

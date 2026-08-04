@@ -115,7 +115,6 @@ def create_payment_order(user, schedule_id):
 # Verify payment — the critical path
 # ---------------------------------------------------------------------------
 
-@transaction.atomic
 def verify_and_confirm_payment(user, gateway_order_id, gateway_payment_id, gateway_signature):
     """
     Verify Razorpay signature and confirm booking atomically.
@@ -136,11 +135,9 @@ def verify_and_confirm_payment(user, gateway_order_id, gateway_payment_id, gatew
 
     Returns the Booking instance.
     """
-    # Lock the payment row to prevent concurrent verifications
+    # Fetch payment record
     try:
-        payment = Payment.objects.select_for_update().select_related(
-            'user', 'show_schedule', 'booking'
-        ).get(gateway_order_id=gateway_order_id)
+        payment = Payment.objects.select_related('user').get(gateway_order_id=gateway_order_id)
     except Payment.DoesNotExist:
         raise ValueError('Payment order not found.')
 
@@ -164,33 +161,31 @@ def verify_and_confirm_payment(user, gateway_order_id, gateway_payment_id, gatew
         _fail_payment(payment, gateway_payment_id, str(e))
         raise ValueError(str(e))
 
-    # --- Signature valid — confirm booking ---
+    # --- Signature valid — confirm booking atomically ---
     from .reservation_service import confirm_booking as _confirm_booking
 
     try:
-        booking = _confirm_booking(user, payment.show_schedule_id)
+        with transaction.atomic():
+            booking = _confirm_booking(user, payment.show_schedule_id)
+            payment.gateway_payment_id = gateway_payment_id
+            payment.gateway_signature = gateway_signature
+            payment.status = 'success'
+            payment.booking = booking
+            payment.set_gateway_response({
+                'razorpay_order_id': gateway_order_id,
+                'razorpay_payment_id': gateway_payment_id,
+                'razorpay_signature': gateway_signature,
+                'verified_at': timezone.now().isoformat(),
+            })
+            payment.save(update_fields=[
+                'gateway_payment_id', 'gateway_signature',
+                'status', 'booking', 'gateway_response', 'updated_at'
+            ])
+            return booking
     except ValueError as e:
         # Reservation may have expired between payment and verification
         _fail_payment(payment, gateway_payment_id, str(e))
         raise ValueError(f'Booking failed after payment: {str(e)}')
-
-    # Update payment to success
-    payment.gateway_payment_id = gateway_payment_id
-    payment.gateway_signature = gateway_signature
-    payment.status = 'success'
-    payment.booking = booking
-    payment.set_gateway_response({
-        'razorpay_order_id': gateway_order_id,
-        'razorpay_payment_id': gateway_payment_id,
-        'razorpay_signature': gateway_signature,
-        'verified_at': timezone.now().isoformat(),
-    })
-    payment.save(update_fields=[
-        'gateway_payment_id', 'gateway_signature',
-        'status', 'booking', 'gateway_response', 'updated_at'
-    ])
-
-    return booking
 
 
 def record_payment_failure(gateway_order_id, gateway_payment_id, reason='Payment failed or cancelled'):
@@ -320,9 +315,7 @@ def process_webhook_event(payload_body: bytes, signature: str) -> dict:
 
     # Step 2: fetch payment row (with lock)
     try:
-        payment = Payment.objects.select_for_update().select_related(
-            'user', 'show_schedule', 'booking'
-        ).get(gateway_order_id=order_id)
+        payment = Payment.objects.select_for_update().select_related('user').get(gateway_order_id=order_id)
     except Payment.DoesNotExist:
         # Not our order — ignore
         return {'status': 'skipped', 'reason': f'Order {order_id} not found'}

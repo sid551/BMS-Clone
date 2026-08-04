@@ -67,8 +67,9 @@
             <span><i class="fas fa-tv mr-2"></i>SCREEN THIS WAY</span>
           </div>
 
-          <form method="POST" id="seatForm">
+          <form method="POST" id="seatForm" action="{% url 'book_seats' schedule.theater.id %}">
             {% csrf_token %}
+            <input type="hidden" name="schedule_id" value="{{ schedule.id }}">
 
             <!-- Multi-Tier Layout Grid -->
             {% for tier_name, rows in tier_groups.items %}

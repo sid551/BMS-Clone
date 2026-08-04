@@ -35,67 +35,129 @@ def movie_list(request):
 
 
 def theater_list(request, movie_id):
+    """
+    Displays theaters and UPCOMING show schedules for a movie.
+    Past/expired schedules are automatically filtered out.
+    """
+    now = timezone.now()
     movie = get_object_or_404(Movie, id=movie_id)
-    schedules = ShowSchedule.objects.filter(movie=movie).select_related('theater', 'screen')
-    theaters = Theater.objects.filter(schedules__movie=movie).distinct().prefetch_related('screens')
+
+    # Only show upcoming schedules
+    schedules = (
+        ShowSchedule.objects
+        .filter(movie=movie, show_time__gte=now)
+        .select_related('theater', 'screen')
+        .order_by('show_time')
+    )
+
+    # Only show theaters that have upcoming schedules for this movie
+    theaters = (
+        Theater.objects
+        .filter(schedules__movie=movie, schedules__show_time__gte=now)
+        .distinct()
+        .prefetch_related('screens')
+    )
+
+    # Group upcoming schedules by theater
+    theater_schedules = {}
+    for schedule in schedules:
+        theater_schedules.setdefault(schedule.theater_id, []).append(schedule)
+
     return render(request, 'movies/theater_list.html', {
         'movie': movie,
         'theaters': theaters,
         'schedules': schedules,
+        'theater_schedules': theater_schedules,
     })
 
 
 @login_required(login_url='/login/')
 def book_seats(request, theater_id):
+    """
+    Handles GET & POST for /movies/theater/<theater_id>/seats/book/
+
+    GET: Renders seat map (seat_selection.html) for specified schedule_id or next upcoming schedule.
+    POST: Reserves seats, creates payment order, and renders Razorpay checkout page (checkout.html).
+    """
     theater = get_object_or_404(Theater, id=theater_id)
-    schedule_id = request.GET.get('schedule_id')
+    now = timezone.now()
 
-    if schedule_id:
-        schedule = get_object_or_404(ShowSchedule, id=schedule_id, theater=theater)
+    schedule_id = request.POST.get('schedule_id') or request.GET.get('schedule_id')
+
+    if schedule_id and str(schedule_id).isdigit():
+        schedule = ShowSchedule.objects.filter(id=int(schedule_id), theater=theater).select_related('movie', 'theater', 'screen').first()
     else:
-        schedule = ShowSchedule.objects.filter(theater=theater, show_time__gte=timezone.now()).first()
+        schedule = ShowSchedule.objects.filter(theater=theater, show_time__gte=now).select_related('movie', 'theater', 'screen').order_by('show_time').first()
 
-    screen = schedule.screen if schedule and schedule.screen else theater.screens.first()
+    if not schedule:
+        messages.error(request, 'No upcoming show schedules available for this theater.')
+        return redirect('movie_list')
 
+    # If POST request with selected seats -> Reserve & Launch Razorpay Checkout
+    if request.method == 'POST':
+        selected_seat_ids = [int(sid) for sid in request.POST.getlist('seats') if sid.isdigit()]
+
+        if not selected_seat_ids:
+            messages.error(request, 'Please select at least one seat to proceed.')
+            return redirect(f"{reverse('book_seats', args=[theater_id])}?schedule_id={schedule.id}")
+
+        from .reservation_service import reserve_seats
+        from .payment_service import create_payment_order
+
+        # Reserve seats for the requesting user
+        try:
+            reserve_seats(request.user, schedule.id, selected_seat_ids)
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect(f"{reverse('book_seats', args=[theater_id])}?schedule_id={schedule.id}")
+
+        # Create Razorpay payment order
+        try:
+            order_data = create_payment_order(request.user, schedule.id)
+        except (ValueError, Exception) as e:
+            messages.error(request, f'Could not initiate payment: {str(e)}')
+            return redirect(f"{reverse('book_seats', args=[theater_id])}?schedule_id={schedule.id}")
+
+        import json
+        return render(request, 'movies/checkout.html', {
+            'order_data': order_data,
+            'order_data_json': json.dumps(order_data),
+            'schedule': schedule,
+            'razorpay_key_id': order_data['key_id'],
+            'amount_in_rupees': float(order_data['amount']) / 100.0,
+        })
+
+    # GET Request: Render Seat Selection Map
+    screen = schedule.screen if schedule.screen else theater.screens.first()
     if screen:
         screen.generate_seats()
         all_seats = Seat.objects.filter(screen=screen, is_active=True).order_by('row', 'number')
-        if schedule and schedule.screen and not schedule.show_seats.exists():
+        if not schedule.show_seats.exists():
             schedule._generate_show_seats()
     else:
         all_seats = Seat.objects.filter(theater=theater, is_active=True).order_by('seat_number')
 
-    # Get already booked or active reserved seat IDs for this specific schedule
-    booked_seat_ids = set()
-    confirmed_booked_ids = set()
-    if schedule:
-        from .reservation_service import _release_stale
-        _release_stale(schedule.id)
+    # Clean up stale reservations
+    from .reservation_service import _release_stale
+    _release_stale(schedule.id)
 
-        now = timezone.now()
-        confirmed_booked_ids = set(
-            BookingSeat.objects.filter(show_schedule=schedule)
-            .values_list('seat_id', flat=True)
+    confirmed_booked_ids = set(
+        BookingSeat.objects.filter(show_schedule=schedule)
+        .values_list('seat_id', flat=True)
+    )
+    reserved_by_others_ids = set(
+        ShowSeat.objects.filter(
+            show_schedule=schedule,
+            status__in=['booked', 'reserved'],
+            reserved_until__gt=now
         )
-        reserved_by_others_ids = set(
-            ShowSeat.objects.filter(
-                show_schedule=schedule,
-                status__in=['booked', 'reserved'],
-                reserved_until__gt=now
-            )
-            .exclude(reserved_by=request.user)
-            .values_list('seat_id', flat=True)
-        )
-        booked_seat_ids = confirmed_booked_ids | reserved_by_others_ids
-    else:
-        booked_seat_ids = set(Seat.objects.filter(theater=theater, is_booked=True).values_list('id', flat=True))
+        .exclude(reserved_by=request.user)
+        .values_list('seat_id', flat=True)
+    )
+    booked_seat_ids = confirmed_booked_ids | reserved_by_others_ids
 
-    # Base ticket price
-    base_price = schedule.price if schedule else 200.00
-
-    # Group seats by tier and row for layout rendering (Regular front near screen -> Premium -> Recliner back)
+    base_price = schedule.price
     tier_groups = {'regular': {}, 'premium': {}, 'recliner': {}}
-
     tier_prices = {}
 
     for s in all_seats:
@@ -104,105 +166,7 @@ def book_seats(request, theater_id):
         tier_prices[s.seat_type] = s.calculated_price
 
         tier = s.seat_type if s.seat_type in tier_groups else 'regular'
-        row_dict = tier_groups[tier]
-        row_dict.setdefault(s.row, []).append(s)
-
-    if request.method == 'POST':
-        selected_seat_ids = [int(sid) for sid in request.POST.getlist('seats') if sid.isdigit()]
-
-        if not selected_seat_ids:
-            return render(request, 'movies/seat_selection.html', {
-                'theaters': theater,
-                'schedule': schedule,
-                'screen': screen,
-                'tier_groups': tier_groups,
-                'tier_prices': tier_prices,
-                'error': 'Please select at least one seat to proceed.',
-            })
-
-        # Validate available seats
-        number_of_seats = len(selected_seat_ids)
-
-        if schedule and number_of_seats > schedule.available_seats:
-            return render(request, 'movies/seat_selection.html', {
-                'theaters': theater,
-                'schedule': schedule,
-                'screen': screen,
-                'tier_groups': tier_groups,
-                'tier_prices': tier_prices,
-                'error': f'Not enough seats available. Only {schedule.available_seats} left.',
-            })
-
-        # Ensure none of selected seats are already booked or held by another user
-        now = timezone.now()
-        currently_held_by_others = set(
-            ShowSeat.objects.filter(
-                show_schedule=schedule,
-                seat_id__in=selected_seat_ids,
-                status__in=['booked', 'reserved'],
-                reserved_until__gt=now
-            )
-            .exclude(reserved_by=request.user)
-            .values_list('seat_id', flat=True)
-        )
-        already_booked = (set(selected_seat_ids) & confirmed_booked_ids) | currently_held_by_others
-        if already_booked:
-            return render(request, 'movies/seat_selection.html', {
-                'theaters': theater,
-                'schedule': schedule,
-                'screen': screen,
-                'tier_groups': tier_groups,
-                'tier_prices': tier_prices,
-                'error': 'One or more of your selected seats are currently reserved or booked by another user. Please choose available seats.',
-            })
-
-        # Calculate exact total price per selected seat
-        chosen_seats = Seat.objects.filter(id__in=selected_seat_ids)
-        total_calculated_price = sum(s.calculate_price(base_price) for s in chosen_seats)
-
-        from django.db import transaction
-        with transaction.atomic():
-            booking = Booking.objects.create(
-                user=request.user,
-                show_schedule=schedule,
-                number_of_seats=number_of_seats,
-                total_price=total_calculated_price,
-                status='confirmed',
-                movie=schedule.movie if schedule else theater.movie,
-                theater=theater,
-            )
-
-            # Record BookingSeats
-            booking_seats_to_create = []
-            for s in chosen_seats:
-                booking_seats_to_create.append(BookingSeat(
-                    booking=booking,
-                    show_schedule=schedule,
-                    seat=s,
-                    price=s.calculate_price(base_price)
-                ))
-            if booking_seats_to_create:
-                BookingSeat.objects.bulk_create(booking_seats_to_create)
-
-            # Update schedule available seats
-            if schedule:
-                schedule.available_seats = max(0, schedule.available_seats - number_of_seats)
-                schedule.save(update_fields=['available_seats'])
-                # Mark ShowSeat status as booked
-                ShowSeat.objects.filter(show_schedule=schedule, seat_id__in=selected_seat_ids).update(
-                    status='booked',
-                    reserved_by=None,
-                    reserved_until=None
-                )
-
-            # Mark seat as booked globally for fallback
-            chosen_seats.update(is_booked=True)
-
-        messages.success(
-            request,
-            f'Booking confirmed! Reference: {booking.booking_reference}. Seats: {", ".join(s.seat_number for s in chosen_seats)}'
-        )
-        return redirect('profile')
+        tier_groups[tier].setdefault(s.row, []).append(s)
 
     return render(request, 'movies/seat_selection.html', {
         'theaters': theater,

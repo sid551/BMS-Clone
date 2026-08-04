@@ -11,7 +11,7 @@ from .models import (
     Genre, Language, CastMember,
     Movie, MovieImage,
     Theater, Screen, ShowSchedule,
-    Seat, ShowSeat, Booking, BookingSeat, Review, ReportedReview,
+    Seat, ShowSeat, Booking, BookingSeat, Review, ReportedReview, Payment,
 )
 
 
@@ -652,3 +652,59 @@ class ReportedReviewAdmin(admin.ModelAdmin):
         )
         self.message_user(request, f'{reviews.count()} review(s) restored and reports dismissed.')
     restore_reported_review.short_description = 'Restore review(s) and dismiss reports'
+
+
+# ---------------------------------------------------------------------------
+# Payment
+# ---------------------------------------------------------------------------
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = [
+        'gateway_order_id', 'user', 'amount', 'currency',
+        'gateway', 'status', 'created_at',
+    ]
+    list_filter = ['status', 'gateway', 'currency', 'created_at']
+    search_fields = [
+        'gateway_order_id', 'gateway_payment_id',
+        'user__username', 'user__email',
+        'show_schedule__movie__title',
+    ]
+    readonly_fields = [
+        'gateway_order_id', 'gateway_payment_id', 'gateway_signature',
+        'amount', 'amount_paise', 'currency', 'gateway',
+        'gateway_response_pretty', 'created_at', 'updated_at',
+    ]
+    date_hierarchy = 'created_at'
+
+    fieldsets = (
+        ('Payment Info', {
+            'fields': (
+                'user', 'booking', 'show_schedule',
+                'gateway', 'status',
+            )
+        }),
+        ('Gateway IDs', {
+            'fields': (
+                'gateway_order_id', 'gateway_payment_id', 'gateway_signature',
+            )
+        }),
+        ('Amount', {
+            'fields': ('amount', 'amount_paise', 'currency')
+        }),
+        ('Audit', {
+            'fields': ('gateway_response_pretty', 'created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+    def gateway_response_pretty(self, obj):
+        """Render raw gateway response as readable JSON in admin."""
+        import json
+        from django.utils.html import format_html
+        data = obj.get_gateway_response()
+        if not data:
+            return '—'
+        pretty = json.dumps(data, indent=2)
+        return format_html('<pre style="font-size:12px">{}</pre>', pretty)
+    gateway_response_pretty.short_description = 'Gateway Response (raw)'

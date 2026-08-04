@@ -679,3 +679,94 @@ class ReportedReview(models.Model):
 
     def __str__(self):
         return f'Report by {self.reported_by.username} on "{self.review}" [{self.status}]'
+
+
+# ---------------------------------------------------------------------------
+# Payment
+# ---------------------------------------------------------------------------
+
+import json as _json
+
+
+class Payment(models.Model):
+    GATEWAY_CHOICES = [
+        ('razorpay', 'Razorpay'),
+        ('stripe', 'Stripe'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+        ('refunded', 'Refunded'),
+    ]
+
+    # Relationships
+    booking = models.OneToOneField(
+        'Booking', on_delete=models.CASCADE,
+        related_name='payment', null=True, blank=True
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='payments'
+    )
+    show_schedule = models.ForeignKey(
+        ShowSchedule, on_delete=models.CASCADE,
+        related_name='payments', null=True, blank=True
+    )
+
+    # Gateway info
+    gateway = models.CharField(max_length=20, choices=GATEWAY_CHOICES, default='razorpay')
+    gateway_order_id = models.CharField(
+        max_length=255, unique=True,
+        help_text='Order ID returned by the payment gateway (e.g. order_xxx from Razorpay)'
+    )
+    gateway_payment_id = models.CharField(
+        max_length=255, blank=True,
+        help_text='Payment ID returned by the gateway after payment attempt'
+    )
+    gateway_signature = models.CharField(
+        max_length=512, blank=True,
+        help_text='Signature for server-side verification (Razorpay)'
+    )
+
+    # Transaction details — always calculated server-side
+    amount = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        help_text='Amount in base currency units (e.g. INR)'
+    )
+    amount_paise = models.PositiveIntegerField(
+        default=0,
+        help_text='Amount in smallest currency unit sent to gateway (paise for INR)'
+    )
+    currency = models.CharField(max_length=5, default='INR')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    # Audit
+    gateway_response = models.TextField(
+        blank=True,
+        help_text='Raw JSON response from gateway — stored for audit/dispute resolution'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['gateway_order_id']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f'Payment {self.gateway_order_id} [{self.status}] ₹{self.amount}'
+
+    def set_gateway_response(self, data: dict):
+        """Safely store raw gateway response as JSON string."""
+        self.gateway_response = _json.dumps(data)
+
+    def get_gateway_response(self) -> dict:
+        """Parse stored gateway response back to dict."""
+        try:
+            return _json.loads(self.gateway_response) if self.gateway_response else {}
+        except Exception:
+            return {}

@@ -9,3 +9,4 @@ Pillow
 whitenoise==6.7.0
 cloudinary==1.36.0
 django-cloudinary-storage==0.3.0
+razorpay==1.4.2

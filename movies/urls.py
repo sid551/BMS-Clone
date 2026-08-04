@@ -15,6 +15,11 @@ urlpatterns = [
     path('schedule/<int:schedule_id>/release/', views.release_seats_api, name='release_seats_api'),
     path('schedule/<int:schedule_id>/reservation-status/', views.reservation_status_api, name='reservation_status_api'),
     path('schedule/<int:schedule_id>/confirm-booking/', views.confirm_booking_api, name='confirm_booking_api'),
+    path('schedule/<int:schedule_id>/create-payment-order/', views.create_payment_order_api, name='create_payment_order_api'),
+    path('payment/<int:payment_id>/status/', views.get_payment_status_api, name='get_payment_status_api'),
+    path('payment/verify/', views.verify_payment_api, name='verify_payment_api'),
+    path('payment/failed/', views.record_payment_failure_api, name='record_payment_failure_api'),
+    path('payment/webhook/razorpay/', views.razorpay_webhook, name='razorpay_webhook'),
 
     # Custom Admin Management Routes
     path('manage/', views.admin_dashboard, name='admin_dashboard'),

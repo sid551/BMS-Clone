@@ -602,9 +602,216 @@ def confirm_booking_api(request, schedule_id):
     })
 
 
-# ---------------------------------------------------------------------------
-# Custom Admin Interface views (Staff required)
-# ---------------------------------------------------------------------------
+@login_required(login_url='/login/')
+def create_payment_order_api(request, schedule_id):
+    """
+    POST /movies/schedule/<id>/create-payment-order/
+
+    Creates a Razorpay order server-side for the user's reserved seats.
+    Amount is always calculated on the server — never trusted from client.
+
+    Success response:
+    {
+        "payment_id": 1,
+        "gateway_order_id": "order_xxx",
+        "amount": 45000,
+        "currency": "INR",
+        "key_id": "rzp_test_xxx",
+        "movie": "...",
+        "seats": ["A1", "A2"],
+        "seconds_remaining": 87,
+        "prefill": { "name": "...", "email": "..." }
+    }
+
+    Error response (400):
+    { "error": "Your seat reservation has expired." }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required.'}, status=405)
+
+    from .payment_service import create_payment_order
+
+    try:
+        order_data = create_payment_order(request.user, schedule_id)
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except ShowSchedule.DoesNotExist:
+        return JsonResponse({'error': 'Schedule not found.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Payment order creation failed: {str(e)}'}, status=500)
+
+    return JsonResponse(order_data)
+
+
+@login_required(login_url='/login/')
+def get_payment_status_api(request, payment_id):
+    """
+    GET /movies/payment/<id>/status/
+    Returns the current status of a payment order for the requesting user.
+    """
+    from .models import Payment
+    try:
+        payment = Payment.objects.select_related('booking', 'show_schedule__movie').get(
+            id=payment_id, user=request.user
+        )
+    except Payment.DoesNotExist:
+        return JsonResponse({'error': 'Payment not found.'}, status=404)
+
+    return JsonResponse({
+        'payment_id': payment.id,
+        'gateway_order_id': payment.gateway_order_id,
+        'gateway_payment_id': payment.gateway_payment_id or None,
+        'gateway': payment.gateway,
+        'status': payment.status,
+        'amount': float(payment.amount),
+        'currency': payment.currency,
+        'booking_reference': payment.booking.booking_reference if payment.booking else None,
+        'created_at': payment.created_at.isoformat(),
+    })
+
+
+@login_required(login_url='/login/')
+def verify_payment_api(request):
+    """
+    POST /movies/payment/verify/
+
+    Called by the frontend after Razorpay checkout succeeds.
+    Verifies the HMAC-SHA256 signature server-side, then confirms the booking.
+
+    Request body:
+    {
+        "razorpay_order_id":   "order_xxx",
+        "razorpay_payment_id": "pay_xxx",
+        "razorpay_signature":  "abc123..."
+    }
+
+    Success response:
+    {
+        "success": true,
+        "booking_reference": "BMS...",
+        "seats": [...],
+        "total_price": 450.0
+    }
+
+    Failure response (400):
+    { "error": "Payment signature verification failed." }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required.'}, status=405)
+
+    import json as _json
+    from .payment_service import verify_and_confirm_payment
+
+    try:
+        data = _json.loads(request.body)
+    except ValueError:
+        return JsonResponse({'error': 'Invalid JSON body.'}, status=400)
+
+    order_id = data.get('razorpay_order_id', '').strip()
+    payment_id = data.get('razorpay_payment_id', '').strip()
+    signature = data.get('razorpay_signature', '').strip()
+
+    if not order_id or not payment_id or not signature:
+        return JsonResponse({'error': 'Missing required fields: razorpay_order_id, razorpay_payment_id, razorpay_signature.'}, status=400)
+
+    try:
+        booking = verify_and_confirm_payment(request.user, order_id, payment_id, signature)
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Unexpected error: {str(e)}'}, status=500)
+
+    booked_seats = booking.booked_seats.select_related('seat').all()
+
+    return JsonResponse({
+        'success': True,
+        'booking_reference': booking.booking_reference,
+        'movie': booking.movie.title if booking.movie else '',
+        'theater': booking.theater.name if booking.theater else '',
+        'show_time': booking.show_schedule.show_time.isoformat() if booking.show_schedule else '',
+        'seats': [
+            {
+                'seat_number': bs.seat.seat_number,
+                'seat_type': bs.seat.get_seat_type_display(),
+                'price': float(bs.price),
+            }
+            for bs in booked_seats
+        ],
+        'number_of_seats': booking.number_of_seats,
+        'total_price': float(booking.total_price),
+    })
+
+
+@login_required(login_url='/login/')
+def record_payment_failure_api(request):
+    """
+    POST /movies/payment/failed/
+
+    Called by the frontend when the user cancels or payment fails on the Razorpay modal.
+    Marks the payment as failed and releases reserved seats.
+
+    Request body:
+    {
+        "razorpay_order_id": "order_xxx",
+        "razorpay_payment_id": "pay_xxx",   (optional)
+        "reason": "Payment cancelled by user"  (optional)
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required.'}, status=405)
+
+    import json as _json
+    from .payment_service import record_payment_failure
+
+    try:
+        data = _json.loads(request.body)
+    except ValueError:
+        return JsonResponse({'error': 'Invalid JSON body.'}, status=400)
+
+    order_id = data.get('razorpay_order_id', '').strip()
+    if not order_id:
+        return JsonResponse({'error': 'razorpay_order_id is required.'}, status=400)
+
+    gateway_payment_id = data.get('razorpay_payment_id', '')
+    reason = data.get('reason', 'Payment failed or cancelled by user')
+
+    record_payment_failure(order_id, gateway_payment_id, reason)
+
+    return JsonResponse({'success': True, 'message': 'Payment failure recorded. Seats have been released.'})
+
+
+def razorpay_webhook(request):
+    """
+    POST /movies/payment/webhook/razorpay/
+
+    Receives Razorpay webhook events.
+    - Verifies webhook signature using RAZORPAY_WEBHOOK_SECRET (not the API secret).
+    - Processes events idempotently.
+    - Always returns 200 so Razorpay does not retry on app errors.
+    - Returns 400 only for signature failures (tells Razorpay the payload was bad).
+
+    Configure in Razorpay Dashboard → Webhooks → Active Events:
+      payment.captured, payment.failed, order.paid, refund.created
+    """
+    from .payment_service import process_webhook_event, SignatureVerificationError
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required.'}, status=405)
+
+    signature = request.headers.get('X-Razorpay-Signature', '')
+    if not signature:
+        return JsonResponse({'error': 'Missing webhook signature.'}, status=400)
+
+    try:
+        result = process_webhook_event(request.body, signature)
+    except SignatureVerificationError as e:
+        # Return 400 — Razorpay will retry, but we want to surface bad signatures
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception:
+        # Return 200 to stop retries for app-level errors — log internally
+        return JsonResponse({'status': 'error'}, status=200)
+
+    return JsonResponse({'status': result.get('status', 'ok')}, status=200)
 
 @user_passes_test(is_staff_user, login_url='/login/')
 def admin_dashboard(request):

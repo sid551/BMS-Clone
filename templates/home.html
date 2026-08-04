@@ -129,9 +129,9 @@
       <a href="{% url 'movie_detail' movie.id %}" class="text-decoration-none">
         <div class="card h-100">
           <img
-            src="{{ movie.image.url }}"
+            src="{% if movie.poster and movie.poster.name %}{{ movie.poster.url }}{% elif movie.image and movie.image.name %}{{ movie.image.url }}{% else %}https://placehold.co/300x400?text=No+Image{% endif %}"
             class="card-img-top"
-            alt="{{ movie.name }}"
+            alt="{{ movie.title|default:movie.name }}"
             height="300"
           />
           <div class="card-body d-flex flex-column justify-content-between">
@@ -382,15 +382,5 @@
   });
 </script>
 
-<!-- <h1>Movies</h1>
-<ul>
-    {% for movie in movies%}
-    <li>
-        <img src="{{movie.image.url}}" alt="image" >
-        <strong>{{movie.name}}</strong>{{movie.rating}}
-        <p>Cast:{{movie.cast}}</p>
-        <a href="{% url 'theater_list' movie.id %}">View Theaters</a>
-    </li>
-    {% endfor %}
-</ul> -->
+<!-- End Home Page -->
 {% endblock %}

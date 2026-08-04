@@ -84,13 +84,22 @@ def book_seats(request, theater_id):
 
     schedule_id = request.POST.get('schedule_id') or request.GET.get('schedule_id')
 
+    schedule = None
     if schedule_id and str(schedule_id).isdigit():
-        schedule = ShowSchedule.objects.filter(id=int(schedule_id), theater=theater).select_related('movie', 'theater', 'screen').first()
-    else:
-        schedule = ShowSchedule.objects.filter(theater=theater, show_time__gte=now).select_related('movie', 'theater', 'screen').order_by('show_time').first()
+        schedule = ShowSchedule.objects.filter(id=int(schedule_id)).select_related('movie', 'theater', 'screen').first()
+
+    if not schedule or schedule.show_time < now:
+        target_theater = schedule.theater if schedule else theater
+        upcoming = ShowSchedule.objects.filter(theater=target_theater, show_time__gte=now).select_related('movie', 'theater', 'screen').order_by('show_time').first()
+        if not upcoming:
+            upcoming = ShowSchedule.objects.filter(show_time__gte=now).select_related('movie', 'theater', 'screen').order_by('show_time').first()
+        
+        if upcoming and request.method == 'GET' and schedule_id and str(schedule_id).isdigit() and int(schedule_id) != upcoming.id:
+            return redirect(f"{reverse('book_seats', args=[upcoming.theater_id])}?schedule_id={upcoming.id}")
+        schedule = upcoming
 
     if not schedule:
-        messages.error(request, 'No upcoming show schedules available for this theater.')
+        messages.error(request, 'No upcoming show schedules available at the moment.')
         return redirect('movie_list')
 
     # If POST request with selected seats -> Reserve & Launch Razorpay Checkout

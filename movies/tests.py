@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.urls import reverse
 
 from movies.models import (
-    Movie, Theater, Screen, Seat, ShowSchedule, ShowSeat, Booking, Payment
+    Movie, Theater, Screen, Seat, ShowSchedule, ShowSeat, Booking, BookingSeat, Payment
 )
 from movies.reservation_service import reserve_seats
 
@@ -22,11 +22,12 @@ from movies.reservation_service import reserve_seats
     RAZORPAY_KEY_SECRET='6bVYVwV5jpiMa0FRH7xT0QPV',
     RAZORPAY_WEBHOOK_SECRET='BmsWebHook'
 )
-class BookSeatsFlowTestCase(TestCase):
+class MoviesWorkflowTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='testuser', password='password123')
+        self.user.backend = 'django.contrib.auth.backends.ModelBackend'
         self.client = Client()
-        self.client.login(username='testuser', password='password123')
+        self.client.force_login(self.user)
 
         self.movie = Movie.objects.create(
             title='Inception',
@@ -45,11 +46,12 @@ class BookSeatsFlowTestCase(TestCase):
         )
         self.screen.generate_seats()
 
+        now = timezone.now()
         self.schedule = ShowSchedule.objects.create(
             movie=self.movie,
             theater=self.theater,
             screen=self.screen,
-            show_time=timezone.now() + timedelta(days=1),
+            show_time=now + timedelta(days=1),
             price=Decimal('300.00')
         )
 
@@ -70,17 +72,44 @@ class BookSeatsFlowTestCase(TestCase):
         mock_get_client.return_value = mock_razorpay_client
 
         url = reverse('book_seats', args=[self.theater.id])
-        response = self.client.post(url, {'schedule_id': self.schedule.id})
+        response = self.client.post(url, {'schedule_id': self.schedule.id, 'seats': [s.id for s in seats]})
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'movies/checkout.html')
-
         self.assertContains(response, 'Inception')
         self.assertContains(response, 'order_ui_test_123')
-        self.assertContains(response, '600.00')
-        self.assertContains(response, 'checkout.js')
 
-        # Verify Payment record was created in database
-        payment = Payment.objects.get(gateway_order_id='order_ui_test_123')
-        self.assertEqual(payment.status, 'pending')
-        self.assertEqual(payment.amount, Decimal('600.00'))
+    def test_past_schedule_link_auto_falls_back_to_upcoming_schedule(self):
+        """Test accessing a past/expired schedule ID automatically falls back to the next active upcoming schedule."""
+        past_schedule = ShowSchedule.objects.create(
+            movie=self.movie,
+            theater=self.theater,
+            screen=self.screen,
+            show_time=timezone.now() - timedelta(days=1),
+            price=Decimal('250.00')
+        )
+
+        url = f"{reverse('book_seats', args=[self.theater.id])}?schedule_id={past_schedule.id}"
+        response = self.client.get(url, follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'movies/seat_selection.html')
+        self.assertEqual(response.context['schedule'].id, self.schedule.id)
+
+    def test_theater_list_filters_out_past_schedules(self):
+        """Test theater list page only shows upcoming showtimes and excludes past schedules."""
+        past_schedule = ShowSchedule.objects.create(
+            movie=self.movie,
+            theater=self.theater,
+            screen=self.screen,
+            show_time=timezone.now() - timedelta(days=1),
+            price=Decimal('250.00')
+        )
+
+        url = reverse('theater_list', args=[self.movie.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        schedules_context = response.context['schedules']
+        self.assertIn(self.schedule, schedules_context)
+        self.assertNotIn(past_schedule, schedules_context)

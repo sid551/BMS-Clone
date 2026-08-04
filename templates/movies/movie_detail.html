@@ -17,15 +17,7 @@
   <div class="row mb-4">
 
     <div class="col-md-3 mb-3">
-      {% if movie.poster and movie.poster.name %}
-        <img src="{{ movie.poster.url }}" class="img-fluid rounded shadow" alt="{{ movie.title }}" style="width:100%;object-fit:cover;max-height:420px">
-      {% else %}
-        {% if movie.image and movie.image.name %}
-          <img src="{{ movie.image.url }}" class="img-fluid rounded shadow" alt="{{ movie.title }}" style="width:100%;object-fit:cover;max-height:420px">
-        {% else %}
-          <img src="https://placehold.co/300x420?text=No+Poster" class="img-fluid rounded shadow" alt="{{ movie.title }}">
-        {% endif %}
-      {% endif %}
+      <img src="{% if movie.poster %}{{ movie.poster|image_url }}{% else %}{{ movie.image|image_url }}{% endif %}" class="img-fluid rounded shadow" alt="{{ movie.title }}" style="width:100%;object-fit:cover;max-height:420px">
     </div>
 
     <div class="col-md-9">

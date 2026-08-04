@@ -21,12 +21,25 @@ from .forms import (
 
 
 
+def cleanup_completed_schedules():
+    """
+    Automatically deletes completed show schedules that passed (show_time < timezone.now()).
+    Associated ShowSeat records are automatically deleted via CASCADE.
+    """
+    now = timezone.now()
+    completed = ShowSchedule.objects.filter(show_time__lt=now)
+    count = completed.count()
+    if count > 0:
+        completed.delete()
+    return count
+
+
 def is_staff_user(user):
     return user.is_authenticated and user.is_staff
 
 
-
 def movie_list(request):
+    cleanup_completed_schedules()
     search_query = request.GET.get('search')
     movies = Movie.objects.prefetch_related('genres', 'languages')
     if search_query:
@@ -34,11 +47,36 @@ def movie_list(request):
     return render(request, 'movies/movie_list.html', {'movies': movies})
 
 
+def movie_detail(request, movie_id):
+    cleanup_completed_schedules()
+    now = timezone.now()
+    movie = get_object_or_404(Movie, id=movie_id)
+    
+    schedules = (
+        ShowSchedule.objects
+        .filter(movie=movie, show_time__gte=now)
+        .select_related('theater', 'screen')
+        .order_by('show_time')
+    )
+    reviews = Review.objects.filter(movie=movie).select_related('user').order_by('-created_at')
+    
+    from .recommendations import get_recommended_movies
+    recommended_movies = get_recommended_movies(movie, limit=4)
+
+    return render(request, 'movies/movie_detail.html', {
+        'movie': movie,
+        'schedules': schedules,
+        'reviews': reviews,
+        'recommended_movies': recommended_movies,
+    })
+
+
 def theater_list(request, movie_id):
     """
     Displays theaters and UPCOMING show schedules for a movie.
-    Past/expired schedules are automatically filtered out.
+    Past/expired schedules are automatically filtered out and deleted.
     """
+    cleanup_completed_schedules()
     now = timezone.now()
     movie = get_object_or_404(Movie, id=movie_id)
 
@@ -79,6 +117,7 @@ def book_seats(request, theater_id):
     GET: Renders seat map (seat_selection.html) for specified schedule_id or next upcoming schedule.
     POST: Reserves seats, creates payment order, and renders Razorpay checkout page (checkout.html).
     """
+    cleanup_completed_schedules()
     theater = get_object_or_404(Theater, id=theater_id)
     now = timezone.now()
 

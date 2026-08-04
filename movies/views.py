@@ -48,25 +48,47 @@ def movie_list(request):
 
 
 def movie_detail(request, movie_id):
-    cleanup_completed_schedules()
     now = timezone.now()
     movie = get_object_or_404(Movie, id=movie_id)
-    
+
     schedules = (
         ShowSchedule.objects
         .filter(movie=movie, show_time__gte=now)
         .select_related('theater', 'screen')
         .order_by('show_time')
     )
+
+    # Group schedules by theater name for the template
+    schedules_by_theater = {}
+    for s in schedules:
+        key = s.theater.name
+        schedules_by_theater.setdefault(key, []).append(s)
+
+    cast = movie.cast_members.select_related() if hasattr(movie, 'cast_members') else []
+    gallery = MovieImage.objects.filter(movie=movie) if MovieImage else []
     reviews = Review.objects.filter(movie=movie).select_related('user').order_by('-created_at')
-    
+
+    # Build movie_meta string (genres, languages, duration, etc.)
+    parts = []
+    if hasattr(movie, 'genres') and movie.genres.exists():
+        parts.append(', '.join(g.name for g in movie.genres.all()))
+    if hasattr(movie, 'languages') and movie.languages.exists():
+        parts.append(', '.join(l.name for l in movie.languages.all()))
+    if hasattr(movie, 'duration_minutes') and movie.duration_minutes:
+        parts.append(f"{movie.duration_minutes} min")
+    movie_meta = ' | '.join(parts)
+
     from .recommendations import get_recommended_movies
     recommended_movies = get_recommended_movies(movie, limit=4)
 
     return render(request, 'movies/movie_detail.html', {
         'movie': movie,
         'schedules': schedules,
+        'schedules_by_theater': schedules_by_theater,
+        'cast': cast,
+        'gallery': gallery,
         'reviews': reviews,
+        'movie_meta': movie_meta,
         'recommended_movies': recommended_movies,
     })
 

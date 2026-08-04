@@ -117,7 +117,6 @@ def book_seats(request, theater_id):
     GET: Renders seat map (seat_selection.html) for specified schedule_id or next upcoming schedule.
     POST: Reserves seats, creates payment order, and renders Razorpay checkout page (checkout.html).
     """
-    cleanup_completed_schedules()
     theater = get_object_or_404(Theater, id=theater_id)
     now = timezone.now()
 

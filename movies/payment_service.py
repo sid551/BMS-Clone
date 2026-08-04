@@ -77,6 +77,8 @@ def create_payment_order(user, schedule_id):
         })
     except razorpay.errors.BadRequestError as e:
         raise ValueError(f'Payment gateway error: {str(e)}')
+    except Exception as e:
+        raise ValueError(f'Payment gateway error: {str(e)}')
 
     gateway_order_id = order_data['id']
 

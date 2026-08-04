@@ -548,6 +548,39 @@ def reservation_status_api(request, schedule_id):
 
 
 @login_required(login_url='/login/')
+def book_seats(request, theater_id):
+    """
+    POST /movies/theater/<theater_id>/seats/book/
+    Called when user clicks "Proceed to Book Seats" in seat_selection.html.
+    Initiates payment order and renders the Razorpay checkout page.
+    """
+    schedule_id = request.POST.get('schedule_id')
+    if not schedule_id:
+        messages.error(request, 'No show schedule selected.')
+        return redirect('movie_list')
+
+    from .payment_service import create_payment_order
+    try:
+        order_data = create_payment_order(request.user, int(schedule_id))
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect('seat_map_api', schedule_id=schedule_id)
+    except Exception as e:
+        messages.error(request, f'Could not initiate payment: {str(e)}')
+        return redirect('seat_map_api', schedule_id=schedule_id)
+
+    schedule = ShowSchedule.objects.select_related('movie', 'theater', 'screen').get(pk=schedule_id)
+    import json
+    return render(request, 'movies/checkout.html', {
+        'order_data': order_data,
+        'order_data_json': json.dumps(order_data),
+        'schedule': schedule,
+        'razorpay_key_id': order_data['key_id'],
+        'amount_in_rupees': float(order_data['amount']) / 100.0,
+    })
+
+
+@login_required(login_url='/login/')
 def confirm_booking_api(request, schedule_id):
     """
     POST /movies/schedule/<id>/confirm-booking/

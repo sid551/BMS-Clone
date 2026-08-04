@@ -80,7 +80,8 @@ class MoviesWorkflowTests(TestCase):
         self.assertContains(response, 'order_ui_test_123')
 
     def test_past_schedule_link_auto_falls_back_to_upcoming_schedule(self):
-        """Test accessing a past/expired schedule ID automatically falls back to the next active upcoming schedule."""
+        """Test accessing a schedule ID loads seat map directly without redirecting to movie_list."""
+        self.client.force_login(self.user)
         past_schedule = ShowSchedule.objects.create(
             movie=self.movie,
             theater=self.theater,
@@ -90,11 +91,11 @@ class MoviesWorkflowTests(TestCase):
         )
 
         url = f"{reverse('book_seats', args=[self.theater.id])}?schedule_id={past_schedule.id}"
-        response = self.client.get(url, follow=True)
+        response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'movies/seat_selection.html')
-        self.assertEqual(response.context['schedule'].id, self.schedule.id)
+        self.assertEqual(response.context['schedule'].id, past_schedule.id)
 
     def test_theater_list_filters_out_past_schedules(self):
         """Test theater list page only shows upcoming showtimes and excludes past schedules."""

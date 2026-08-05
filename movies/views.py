@@ -769,9 +769,31 @@ def verify_payment_api(request):
     try:
         booking = verify_and_confirm_payment(request.user, order_id, payment_id, signature)
     except ValueError as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        # Check if booking was already confirmed by webhook — return success in that case
+        from .models import Payment
+        try:
+            payment = Payment.objects.select_related('booking').get(
+                gateway_order_id=order_id, user=request.user
+            )
+            if payment.status == 'success' and payment.booking:
+                booking = payment.booking
+            else:
+                return JsonResponse({'error': str(e)}, status=400)
+        except Payment.DoesNotExist:
+            return JsonResponse({'error': str(e)}, status=400)
     except Exception as e:
-        return JsonResponse({'error': f'Unexpected error: {str(e)}'}, status=500)
+        # Last resort — check if payment succeeded anyway (e.g. via webhook)
+        from .models import Payment
+        try:
+            payment = Payment.objects.select_related('booking').get(
+                gateway_order_id=order_id, user=request.user
+            )
+            if payment.status == 'success' and payment.booking:
+                booking = payment.booking
+            else:
+                return JsonResponse({'error': f'Unexpected error: {str(e)}'}, status=500)
+        except Payment.DoesNotExist:
+            return JsonResponse({'error': f'Unexpected error: {str(e)}'}, status=500)
 
     booked_seats = booking.booked_seats.select_related('seat').all()
 

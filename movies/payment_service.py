@@ -161,6 +161,7 @@ def _verify_razorpay_signature(order_id, payment_id, signature):
         raise SignatureVerificationError('Payment signature verification failed.')
 
 
+@transaction.atomic
 def verify_and_confirm_payment(user, gateway_order_id, gateway_payment_id, gateway_signature):
     """
     Verify HMAC-SHA256 signature then confirm booking atomically.
@@ -191,22 +192,21 @@ def verify_and_confirm_payment(user, gateway_order_id, gateway_payment_id, gatew
 
     from .reservation_service import confirm_booking as _confirm
     try:
-        with transaction.atomic():
-            booking = _confirm(user, payment.show_schedule_id)
-            payment.gateway_payment_id = gateway_payment_id
-            payment.gateway_signature = gateway_signature
-            payment.status = 'success'
-            payment.booking = booking
-            payment.set_gateway_response({
-                'razorpay_order_id': gateway_order_id,
-                'razorpay_payment_id': gateway_payment_id,
-                'verified_at': timezone.now().isoformat(),
-            })
-            payment.save(update_fields=[
-                'gateway_payment_id', 'gateway_signature',
-                'status', 'booking', 'gateway_response', 'updated_at',
-            ])
-            return booking
+        booking = _confirm(user, payment.show_schedule_id)
+        payment.gateway_payment_id = gateway_payment_id
+        payment.gateway_signature = gateway_signature
+        payment.status = 'success'
+        payment.booking = booking
+        payment.set_gateway_response({
+            'razorpay_order_id': gateway_order_id,
+            'razorpay_payment_id': gateway_payment_id,
+            'verified_at': timezone.now().isoformat(),
+        })
+        payment.save(update_fields=[
+            'gateway_payment_id', 'gateway_signature',
+            'status', 'booking', 'gateway_response', 'updated_at',
+        ])
+        return booking
     except ValueError as e:
         _fail_payment(payment, gateway_payment_id, str(e))
         raise ValueError(f'Booking failed after payment: {str(e)}')

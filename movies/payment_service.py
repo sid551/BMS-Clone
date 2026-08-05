@@ -161,15 +161,15 @@ def _verify_razorpay_signature(order_id, payment_id, signature):
         raise SignatureVerificationError('Payment signature verification failed.')
 
 
-@transaction.atomic
 def verify_and_confirm_payment(user, gateway_order_id, gateway_payment_id, gateway_signature):
     """
     Verify HMAC-SHA256 signature then confirm booking atomically.
     Idempotent — safe to call multiple times for the same payment.
     Returns the Booking instance.
     """
+    # First fetch WITHOUT lock for idempotency check (safe read)
     try:
-        payment = Payment.objects.select_for_update().select_related(
+        payment = Payment.objects.select_related(
             'user', 'show_schedule', 'booking'
         ).get(gateway_order_id=gateway_order_id)
     except Payment.DoesNotExist:
@@ -178,35 +178,48 @@ def verify_and_confirm_payment(user, gateway_order_id, gateway_payment_id, gatew
     if payment.user_id != user.id:
         raise ValueError('Payment does not belong to this user.')
 
+    # Idempotent — already confirmed, return existing booking
     if payment.status == 'success' and payment.booking_id:
-        return payment.booking  # idempotent
+        return payment.booking
 
     if payment.status in ('failed', 'cancelled'):
         raise ValueError(f'Payment is already {payment.status}.')
 
+    # Verify signature before acquiring lock
     try:
         _verify_razorpay_signature(gateway_order_id, gateway_payment_id, gateway_signature)
     except SignatureVerificationError as e:
         _fail_payment(payment, gateway_payment_id, str(e))
         raise ValueError(str(e))
 
+    # Signature valid — confirm booking inside an explicit transaction
     from .reservation_service import confirm_booking as _confirm
     try:
-        booking = _confirm(user, payment.show_schedule_id)
-        payment.gateway_payment_id = gateway_payment_id
-        payment.gateway_signature = gateway_signature
-        payment.status = 'success'
-        payment.booking = booking
-        payment.set_gateway_response({
-            'razorpay_order_id': gateway_order_id,
-            'razorpay_payment_id': gateway_payment_id,
-            'verified_at': timezone.now().isoformat(),
-        })
-        payment.save(update_fields=[
-            'gateway_payment_id', 'gateway_signature',
-            'status', 'booking', 'gateway_response', 'updated_at',
-        ])
-        return booking
+        with transaction.atomic():
+            # Re-fetch with lock inside the transaction
+            payment = Payment.objects.select_for_update().select_related(
+                'user', 'show_schedule', 'booking'
+            ).get(gateway_order_id=gateway_order_id)
+
+            # Re-check idempotency after acquiring lock
+            if payment.status == 'success' and payment.booking_id:
+                return payment.booking
+
+            booking = _confirm(user, payment.show_schedule_id)
+            payment.gateway_payment_id = gateway_payment_id
+            payment.gateway_signature = gateway_signature
+            payment.status = 'success'
+            payment.booking = booking
+            payment.set_gateway_response({
+                'razorpay_order_id': gateway_order_id,
+                'razorpay_payment_id': gateway_payment_id,
+                'verified_at': timezone.now().isoformat(),
+            })
+            payment.save(update_fields=[
+                'gateway_payment_id', 'gateway_signature',
+                'status', 'booking', 'gateway_response', 'updated_at',
+            ])
+            return booking
     except ValueError as e:
         _fail_payment(payment, gateway_payment_id, str(e))
         raise ValueError(f'Booking failed after payment: {str(e)}')

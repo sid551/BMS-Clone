@@ -103,8 +103,7 @@ if os.environ.get('USE_SQLITE') == '1':
     }
 else:
     DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://django_bookmyshow_nrpj_user:mX2JtOpVo7qZH4cAjr28F9o2LLtJUBzU@dpg-d9n1g9h42hec73enc9pg-a.singapore-postgres.render.com/django_bookmyshow_nrpj')
-    parsed_db = dj_database_url.parse(DATABASE_URL)
-    parsed_db['CONN_MAX_AGE'] = 60
+    parsed_db = dj_database_url.parse(DATABASE_URL, conn_max_age=60, ssl_require=True)
     DATABASES = {'default': parsed_db}
 
 # Password validation

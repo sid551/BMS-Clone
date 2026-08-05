@@ -46,7 +46,9 @@
     {% for img in images %}
       <div class="col-md-3 col-6 mb-4">
         <div class="card h-100 shadow-sm text-center">
-          <img src="{{ img.image.url }}" class="card-img-top p-2" style="height: 200px; object-fit: cover;">
+          {% if img.image_url %}
+            <img src="{{ img.image_url }}" class="card-img-top p-2" style="height: 200px; object-fit: cover;">
+          {% endif %}
           <div class="card-body py-2">
             <p class="small text-muted mb-2">{{ img.caption|default:"No caption" }}</p>
             <form method="post">

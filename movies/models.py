@@ -37,6 +37,15 @@ class CastMember(models.Model):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='actor')
     photo = models.ImageField(upload_to='cast/', blank=True, null=True)
 
+    @property
+    def photo_url(self):
+        try:
+            if self.photo and hasattr(self.photo, 'url'):
+                return self.photo.url
+        except Exception:
+            pass
+        return ''
+
     def __str__(self):
         return f'{self.name} ({self.get_role_display()})'
 
@@ -124,6 +133,20 @@ class Movie(models.Model):
             self.image = self.poster
         super().save(*args, **kwargs)
 
+    @property
+    def poster_url(self):
+        try:
+            if self.poster and hasattr(self.poster, 'url'):
+                return self.poster.url
+        except Exception:
+            pass
+        try:
+            if self.image and hasattr(self.image, 'url'):
+                return self.image.url
+        except Exception:
+            pass
+        return ''
+
     def __str__(self):
         return self.title
 
@@ -139,6 +162,15 @@ class MovieImage(models.Model):
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='movies/gallery/')
     caption = models.CharField(max_length=255, blank=True)
+
+    @property
+    def image_url(self):
+        try:
+            if self.image and hasattr(self.image, 'url'):
+                return self.image.url
+        except Exception:
+            pass
+        return ''
 
     def __str__(self):
         return f'Image for {self.movie.title}'

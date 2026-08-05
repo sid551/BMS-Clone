@@ -61,9 +61,11 @@
             <div class="form-group">
               <label>Movie Poster</label>
               {% if movie and movie.poster %}
-                <div class="mb-2">
-                  <img src="{{ movie.poster.url }}" class="img-fluid rounded" style="max-height:160px;">
-                </div>
+                {% if movie.poster_url %}
+                  <div class="mb-2">
+                    <img src="{{ movie.poster_url }}" class="img-fluid rounded" style="max-height:160px;">
+                  </div>
+                {% endif %}
               {% endif %}
               {{ form.poster }}
             </div>

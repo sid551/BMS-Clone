@@ -16,8 +16,8 @@
         <div class="card-body p-4">
           <!-- Summary Header -->
           <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
-            {% if schedule.movie.poster %}
-              <img src="{{ schedule.movie.poster.url }}" alt="{{ schedule.movie.title }}" class="rounded shadow-sm mr-3" style="width: 70px; height: 100px; object-fit: cover;">
+            {% if schedule.movie.poster_url %}
+              <img src="{{ schedule.movie.poster_url }}" alt="{{ schedule.movie.title }}" class="rounded shadow-sm mr-3" style="width: 70px; height: 100px; object-fit: cover;">
             {% endif %}
             <div>
               <h5 class="font-weight-bold mb-1">{{ schedule.movie.title }}</h5>

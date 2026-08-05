@@ -129,7 +129,7 @@
       <a href="{% url 'movie_detail' movie.id %}" class="text-decoration-none">
         <div class="card h-100">
           <img
-            src="{% if movie.poster and movie.poster.name %}{{ movie.poster.url }}{% elif movie.image and movie.image.name %}{{ movie.image.url }}{% else %}https://placehold.co/300x400?text=No+Image{% endif %}"
+            src="{% if movie.poster_url %}{{ movie.poster_url }}{% else %}https://placehold.co/300x400?text=No+Image{% endif %}"
             class="card-img-top"
             alt="{{ movie.title|default:movie.name }}"
             height="300"

@@ -74,8 +74,11 @@ class CastMemberAdmin(admin.ModelAdmin):
     search_fields = ['name']
 
     def photo_preview(self, obj):
-        if obj.photo:
-            return mark_safe(f'<img src="{obj.photo.url}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />')
+        try:
+            if obj.photo and hasattr(obj.photo, 'url'):
+                return mark_safe(f'<img src="{obj.photo.url}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />')
+        except Exception:
+            pass
         return "No Photo"
     photo_preview.short_description = 'Photo'
 
@@ -106,8 +109,11 @@ class MovieAdmin(admin.ModelAdmin):
     )
 
     def poster_preview(self, obj):
-        if obj.poster:
-            return mark_safe(f'<img src="{obj.poster.url}" style="width: 36px; height: 50px; border-radius: 4px; object-fit: cover;" />')
+        try:
+            if obj.poster and hasattr(obj.poster, 'url'):
+                return mark_safe(f'<img src="{obj.poster.url}" style="width: 36px; height: 50px; border-radius: 4px; object-fit: cover;" />')
+        except Exception:
+            pass
         return "No Poster"
     poster_preview.short_description = 'Poster'
 

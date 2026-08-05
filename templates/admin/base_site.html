@@ -1,0 +1,50 @@
+{% extends "admin/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<div style="display: flex; align-items: center; gap: 12px;">
+  <h1 id="site-name" style="margin: 0;">
+    <a href="{% url 'admin:index' %}" style="font-weight: 700; color: #f8fafc; text-decoration: none;">
+      🎬 BookMyShow Admin Portal
+    </a>
+  </h1>
+</div>
+{% endblock %}
+
+{% block nav-global %}
+<div class="quick-admin-nav" style="background: #1e293b; padding: 8px 16px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+    <a href="{% url 'admin:index' %}" style="background: #334155; color: #f8fafc; font-weight: 600; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px;">
+      🏠 Admin Home
+    </a>
+    <a href="{% url 'admin_dashboard' %}" style="background: #2563eb; color: #ffffff; font-weight: 600; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px;">
+      📊 Custom Manage Dashboard
+    </a>
+    <a href="{% url 'admin:movies_showschedule_bulk_add' %}" style="background: #d97706; color: #ffffff; font-weight: 600; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px;">
+      🚀 Bulk Add Showtimes
+    </a>
+    <a href="{% url 'admin:movies_seat_matrix' %}" style="background: #059669; color: #ffffff; font-weight: 600; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px;">
+      💺 Interactive Seat Matrix
+    </a>
+    <a href="{% url 'admin:movies_movie_changelist' %}" style="background: #334155; color: #f8fafc; font-weight: 600; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px;">
+      🎬 Movies
+    </a>
+    <a href="{% url 'admin:movies_theater_changelist' %}" style="background: #334155; color: #f8fafc; font-weight: 600; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px;">
+      🍿 Theaters & Screens
+    </a>
+    <a href="{% url 'admin:movies_booking_changelist' %}" style="background: #334155; color: #f8fafc; font-weight: 600; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px;">
+      🎟️ Bookings
+    </a>
+    <a href="{% url 'admin:movies_reportedreview_changelist' %}" style="background: #7c3aed; color: #ffffff; font-weight: 600; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px;">
+      🚩 Review Moderation
+    </a>
+  </div>
+  <div>
+    <a href="{% url 'movie_list' %}" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 0.82rem; font-weight: 600;">
+      🌐 View Live Website &rarr;
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -166,7 +166,16 @@ def book_seats(request, theater_id):
 
     # If POST request with selected seats -> Reserve & Launch Razorpay Checkout
     if request.method == 'POST':
-        selected_seat_ids = [int(sid) for sid in request.POST.getlist('seats') if sid.isdigit()]
+        raw_seats = request.POST.getlist('seats') or request.POST.get('seats', '').split(',')
+        selected_seat_ids = []
+        for item in raw_seats:
+            if isinstance(item, str):
+                for part in item.split(','):
+                    part = part.strip()
+                    if part.isdigit():
+                        selected_seat_ids.append(int(part))
+            elif isinstance(item, int):
+                selected_seat_ids.append(item)
 
         if not selected_seat_ids:
             messages.error(request, 'Please select at least one seat to proceed.')
@@ -178,25 +187,31 @@ def book_seats(request, theater_id):
         # Reserve seats for the requesting user
         try:
             reserve_seats(request.user, schedule.id, selected_seat_ids)
-        except ValueError as e:
-            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f'Seat reservation notice: {str(e)}')
             return redirect(f"{reverse('book_seats', args=[theater_id])}?schedule_id={schedule.id}")
 
         # Create Razorpay payment order
         try:
             order_data = create_payment_order(request.user, schedule.id)
-        except (ValueError, Exception) as e:
+        except Exception as e:
             messages.error(request, f'Could not initiate payment: {str(e)}')
             return redirect(f"{reverse('book_seats', args=[theater_id])}?schedule_id={schedule.id}")
 
         import json
-        return render(request, 'movies/checkout.html', {
-            'order_data': order_data,
-            'order_data_json': json.dumps(order_data),
-            'schedule': schedule,
-            'razorpay_key_id': order_data['key_id'],
-            'amount_in_rupees': float(order_data['amount']) / 100.0,
-        })
+        amount_rupees = float(order_data.get('amount', 0)) / 100.0 if order_data.get('amount') else 0.0
+
+        try:
+            return render(request, 'movies/checkout.html', {
+                'order_data': order_data,
+                'order_data_json': json.dumps(order_data),
+                'schedule': schedule,
+                'razorpay_key_id': order_data.get('key_id', ''),
+                'amount_in_rupees': amount_rupees,
+            })
+        except Exception as render_err:
+            messages.error(request, f'Checkout rendering note: {str(render_err)}')
+            return redirect(f"{reverse('book_seats', args=[theater_id])}?schedule_id={schedule.id}")
 
     # GET Request: Render Seat Selection Map
     screen = schedule.screen if schedule.screen else theater.screens.first()

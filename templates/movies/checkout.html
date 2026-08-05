@@ -53,7 +53,7 @@
           </button>
 
           <div class="text-center mt-3">
-            <a href="{% url 'book_seats' schedule.theater.id %}?schedule_id={{ schedule.id }}" class="text-muted small">
+            <a href="{% url 'book_seats' schedule.theater_id %}?schedule_id={{ schedule.id }}" class="text-muted small">
               <i class="fas fa-arrow-left mr-1"></i> Cancel and return to seat map
             </a>
           </div>
@@ -124,7 +124,7 @@
                 reason: data.error
               })
             }).then(function() {
-              window.location.href = "{% url 'book_seats' schedule.theater.id %}?schedule_id={{ schedule.id }}";
+              window.location.href = "{% url 'book_seats' schedule.theater_id %}?schedule_id={{ schedule.id }}";
             });
           }
         })

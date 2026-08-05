@@ -322,7 +322,7 @@ class ShowSchedule(models.Model):
 
     class Meta:
         ordering = ['show_time']
-        unique_together = ('theater', 'show_time')
+        unique_together = ('screen', 'show_time')
 
 
 # ---------------------------------------------------------------------------
@@ -450,7 +450,7 @@ class Booking(models.Model):
 
     # Core fields
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookings')
-    show_schedule = models.ForeignKey(ShowSchedule, on_delete=models.CASCADE, related_name='bookings', null=True, blank=True)
+    show_schedule = models.ForeignKey(ShowSchedule, on_delete=models.SET_NULL, related_name='bookings', null=True, blank=True)
     
     # Booking details
     booking_reference = models.CharField(max_length=20, unique=True, editable=False)
@@ -463,7 +463,7 @@ class Booking(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     # Legacy fields kept for backward compatibility
-    seat = models.OneToOneField(Seat, on_delete=models.CASCADE, null=True, blank=True)
+    seat = models.ForeignKey(Seat, on_delete=models.SET_NULL, null=True, blank=True)
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE, null=True, blank=True)
     theater = models.ForeignKey(Theater, on_delete=models.CASCADE, null=True, blank=True)
 
@@ -710,7 +710,7 @@ class Payment(models.Model):
         User, on_delete=models.CASCADE, related_name='payments'
     )
     show_schedule = models.ForeignKey(
-        ShowSchedule, on_delete=models.CASCADE,
+        ShowSchedule, on_delete=models.SET_NULL,
         related_name='payments', null=True, blank=True
     )
 

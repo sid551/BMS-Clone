@@ -53,7 +53,7 @@
           </button>
 
           <div class="text-center mt-3">
-            <a href="{% url 'seat_map_api' schedule.id %}" class="text-muted small">
+            <a href="{% url 'book_seats' schedule.theater.id %}?schedule_id={{ schedule.id }}" class="text-muted small">
               <i class="fas fa-arrow-left mr-1"></i> Cancel and return to seat map
             </a>
           </div>
@@ -113,7 +113,19 @@
             window.location.href = profileUrl;
           } else {
             alert('Payment Verification Failed: ' + (data.error || 'Unknown error'));
-            window.location.href = failureUrl;
+            fetch(failureUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+              },
+              body: JSON.stringify({
+                razorpay_order_id: orderData.gateway_order_id,
+                reason: data.error
+              })
+            }).then(function() {
+              window.location.href = "{% url 'book_seats' schedule.theater.id %}?schedule_id={{ schedule.id }}";
+            });
           }
         })
         .catch(function(err) {

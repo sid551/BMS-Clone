@@ -97,6 +97,8 @@ def create_payment_order(user, schedule_id):
 
     return {
         'payment_id': payment.id,
+        'schedule_id': schedule.id,
+        'theater_id': schedule.theater_id,
         'gateway_order_id': gateway_order_id,
         'amount': amount_paise,
         'currency': currency,

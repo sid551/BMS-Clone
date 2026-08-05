@@ -27,12 +27,13 @@ def register(request):
 
 
 def login_view(request):
+    next_url = request.POST.get('next') or request.GET.get('next') or '/'
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect('/')
+            return redirect(next_url)
     else:
         form = AuthenticationForm()
     return render(request, 'users/login.html', {'form': form})

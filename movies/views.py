@@ -976,6 +976,15 @@ def admin_theater_delete(request, theater_id):
 
 @user_passes_test(is_staff_user, login_url='/login/')
 def admin_manage_schedules(request):
+    if request.method == 'POST':
+        schedule_ids = request.POST.getlist('schedule_ids')
+        if schedule_ids:
+            deleted_count, _ = ShowSchedule.objects.filter(id__in=schedule_ids).delete()
+            messages.success(request, f'Successfully deleted {deleted_count} show schedule(s).')
+        else:
+            messages.warning(request, 'No show schedules were selected for deletion.')
+        return redirect('admin_manage_schedules')
+
     schedules = ShowSchedule.objects.select_related('movie', 'theater', 'screen').order_by('-show_time')
     return render(request, 'movies/custom_admin/manage_schedules.html', {
         'schedules': schedules,

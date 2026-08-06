@@ -21,35 +21,34 @@
         </div>
       {% endif %}
 
-      <form method="post">
-
+      <form method="post" id="scheduleAdminForm">
         {% csrf_token %}
         <div class="form-group">
-          <label>Movie *</label>
+          <label class="font-weight-bold">Movie *</label>
           {{ form.movie }}
         </div>
         <div class="form-group">
-          <label>Theater *</label>
+          <label class="font-weight-bold">Theater *</label>
           {{ form.theater }}
         </div>
         <div class="form-group">
-          <label>Screen / Audi (Optional - Auto-syncs Seats & Theater)</label>
+          <label class="font-weight-bold">Screen / Audi (Filtered for Selected Theater)</label>
           {{ form.screen }}
+          <small class="form-text text-muted">Dropdown updates automatically based on the selected Theater above.</small>
         </div>
         <div class="form-group">
-          <label>Show Time *</label>
+          <label class="font-weight-bold">Show Time *</label>
           {{ form.show_time }}
         </div>
         <div class="form-group">
-          <label>Ticket Price (&#8377;) *</label>
+          <label class="font-weight-bold">Ticket Price (&#8377;) *</label>
           {{ form.price }}
         </div>
         <div class="form-group">
-          <label>Available Seats (Leave blank to auto-sync with Screen Capacity)</label>
+          <label class="font-weight-bold">Available Seats (Leave blank to auto-sync with Screen Capacity)</label>
           {{ form.available_seats }}
           <small class="form-text text-muted">Auto-capped at Screen Capacity. Prevents inconsistency errors.</small>
         </div>
-
 
         <div class="border-top pt-3 text-right">
           <a href="{% url 'admin_manage_schedules' %}" class="btn btn-secondary mr-2">Cancel</a>
@@ -59,4 +58,58 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const theaterSelect = document.getElementById('id_theater');
+  const screenSelect = document.getElementById('id_screen');
+  const initialScreenValue = "{{ form.screen.value|default_if_none:'' }}";
+
+  function loadScreensForTheater(theaterId, preserveSelection) {
+    if (!theaterId) {
+      screenSelect.innerHTML = '<option value="">--------- Select a Theater First ---------</option>';
+      return;
+    }
+
+    screenSelect.innerHTML = '<option value="">Loading screens for selected theater...</option>';
+
+    fetch(`/movies/manage/api/theater/${theaterId}/screens/`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          screenSelect.innerHTML = '<option value="">--------- Select a Screen ---------</option>';
+          if (data.screens.length === 0) {
+            screenSelect.innerHTML = '<option value="">No screens found for this theater</option>';
+          } else {
+            data.screens.forEach(s => {
+              const opt = document.createElement('option');
+              opt.value = s.id;
+              opt.textContent = `${s.name} (${s.capacity} seats)`;
+              if (preserveSelection && String(s.id) === String(initialScreenValue)) {
+                opt.selected = true;
+              }
+              screenSelect.appendChild(opt);
+            });
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching screens:', err);
+        screenSelect.innerHTML = '<option value="">Error loading screens</option>';
+      });
+  }
+
+  if (theaterSelect && screenSelect) {
+    theaterSelect.addEventListener('change', function() {
+      loadScreensForTheater(this.value, false);
+    });
+
+    if (theaterSelect.value) {
+      loadScreensForTheater(theaterSelect.value, true);
+    } else {
+      screenSelect.innerHTML = '<option value="">--------- Select a Theater First ---------</option>';
+    }
+  }
+});
+</script>
 {% endblock %}

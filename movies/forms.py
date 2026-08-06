@@ -141,7 +141,18 @@ class ShowScheduleForm(forms.ModelForm):
         if self.instance and self.instance.pk and self.instance.show_time:
             self.initial['show_time'] = self.instance.show_time.strftime('%Y-%m-%dT%H:%M')
 
+        # Dynamically restrict screens to the selected theater if available
+        theater_id = None
+        if 'theater' in self.data:
+            try:
+                theater_id = int(self.data.get('theater'))
+            except (ValueError, TypeError):
+                pass
+        elif self.instance and self.instance.pk and self.instance.theater_id:
+            theater_id = self.instance.theater_id
 
+        if theater_id:
+            self.fields['screen'].queryset = Screen.objects.filter(theater_id=theater_id)
 
     def clean_available_seats(self):
         seats = self.cleaned_data.get('available_seats')
@@ -159,6 +170,9 @@ class ShowScheduleForm(forms.ModelForm):
             cleaned_data['theater'] = screen.theater
             theater = screen.theater
 
+        if theater and screen and screen.theater != theater:
+            self.add_error('screen', f'Screen "{screen}" does not belong to selected theater "{theater.name}".')
+
         max_capacity = 0
         if screen:
             max_capacity = screen.total_seats
@@ -171,6 +185,7 @@ class ShowScheduleForm(forms.ModelForm):
             cleaned_data['available_seats'] = max_capacity
 
         return cleaned_data
+
 
 
 

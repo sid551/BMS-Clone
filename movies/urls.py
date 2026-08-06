@@ -39,6 +39,8 @@ urlpatterns = [
     path('manage/api/cast/<int:cast_id>/delete/', views.api_quick_delete_cast, name='api_quick_delete_cast'),
     path('manage/api/taxonomies/bulk-delete/', views.api_bulk_delete_taxonomies, name='api_bulk_delete_taxonomies'),
     path('manage/api/movie/<int:movie_id>/unassign-taxonomy/', views.api_unassign_movie_taxonomy, name='api_unassign_movie_taxonomy'),
+    path('manage/api/theater/<int:theater_id>/screens/', views.api_get_theater_screens, name='api_get_theater_screens'),
+
 
 
 

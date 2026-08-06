@@ -1156,6 +1156,28 @@ def api_unassign_movie_taxonomy(request, movie_id):
     return JsonResponse({'error': 'Invalid method'}, status=405)
 
 
+@staff_or_admin_required
+def api_get_theater_screens(request, theater_id):
+    """
+    GET /movies/manage/api/theater/<theater_id>/screens/
+    Returns a JSON list of screens belonging ONLY to the specified theater.
+    """
+    theater = get_object_or_404(Theater, id=theater_id)
+    screens = Screen.objects.filter(theater=theater).order_by('name')
+    data = [
+        {
+            'id': s.id,
+            'name': s.name,
+            'screen_type': s.get_screen_type_display(),
+            'capacity': s.total_seats
+        }
+        for s in screens
+    ]
+    return JsonResponse({'status': 'ok', 'theater_id': theater_id, 'screens': data})
+
+
+
+
 
 
 

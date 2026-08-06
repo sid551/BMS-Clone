@@ -971,13 +971,21 @@ def admin_movie_form(request, movie_id=None):
     languages = Language.objects.all()
     cast_members = CastMember.objects.all()
 
+    movie_genres = list(movie.genres.values_list('id', flat=True)) if movie else []
+    movie_languages = list(movie.languages.values_list('id', flat=True)) if movie else []
+    movie_cast = list(movie.cast.values_list('id', flat=True)) if movie else []
+
     return render(request, 'movies/custom_admin/movie_form.html', {
         'form': form,
         'movie': movie,
         'all_genres': genres,
         'all_languages': languages,
         'all_cast': cast_members,
+        'movie_genres': movie_genres,
+        'movie_languages': movie_languages,
+        'movie_cast': movie_cast,
     })
+
 
 
 @staff_or_admin_required
@@ -1086,6 +1094,49 @@ def api_bulk_delete_taxonomies(request):
 
         return JsonResponse({'status': 'ok', 'count': count, 'deleted_ids': int_ids, 'item_type': item_type})
     return JsonResponse({'error': 'Invalid method'}, status=405)
+
+
+@staff_or_admin_required
+def api_unassign_movie_taxonomy(request, movie_id):
+    """
+    POST /movies/manage/api/movie/<movie_id>/unassign-taxonomy/
+    Unassigns/removes a Genre, Language, or Cast member from THIS specific movie
+    WITHOUT deleting the underlying reference entity from the database.
+    """
+    if request.method == 'POST':
+        movie = get_object_or_404(Movie, id=movie_id)
+        try:
+            if request.content_type == 'application/json':
+                import json
+                data = json.loads(request.body)
+                item_type = data.get('item_type')
+                item_id = data.get('id')
+            else:
+                item_type = request.POST.get('item_type')
+                item_id = request.POST.get('id')
+        except Exception:
+            return JsonResponse({'error': 'Invalid payload'}, status=400)
+
+        if not item_type or not item_id:
+            return JsonResponse({'error': 'item_type and id are required.'}, status=400)
+
+        try:
+            target_id = int(item_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'Invalid ID integer.'}, status=400)
+
+        if item_type == 'genre':
+            movie.genres.remove(target_id)
+        elif item_type == 'language':
+            movie.languages.remove(target_id)
+        elif item_type == 'cast':
+            movie.cast.remove(target_id)
+        else:
+            return JsonResponse({'error': 'Invalid item_type specified.'}, status=400)
+
+        return JsonResponse({'status': 'ok', 'movie_id': movie_id, 'unassigned_id': target_id, 'item_type': item_type})
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
 
 
 

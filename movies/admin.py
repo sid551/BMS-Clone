@@ -87,13 +87,27 @@ class CastMemberAdmin(admin.ModelAdmin):
 # Movie
 # ---------------------------------------------------------------------------
 
+class GenreInline(admin.TabularInline):
+    model = Genre
+    extra = 1
+
+
+class LanguageInline(admin.TabularInline):
+    model = Language
+    extra = 1
+
+
+class CastMemberInline(admin.TabularInline):
+    model = CastMember
+    extra = 1
+
+
 @admin.register(Movie)
 class MovieAdmin(admin.ModelAdmin):
     list_display = ['poster_preview', 'title', 'status', 'release_date', 'duration_minutes', 'age_certification', 'rating']
-    list_filter = ['status', 'genres', 'languages']
+    list_filter = ['status']
     search_fields = ['title', 'description']
-    filter_horizontal = ['genres', 'languages', 'cast']
-    inlines = [MovieImageInline, ShowScheduleInline]
+    inlines = [GenreInline, LanguageInline, CastMemberInline, MovieImageInline, ShowScheduleInline]
     actions = ['recalculate_ratings']
 
     fieldsets = (
@@ -103,10 +117,8 @@ class MovieAdmin(admin.ModelAdmin):
         ('Media', {
             'fields': ('poster', 'trailer_url', 'rating')
         }),
-        ('Classification', {
-            'fields': ('genres', 'languages', 'cast')
-        }),
     )
+
 
     def poster_preview(self, obj):
         try:

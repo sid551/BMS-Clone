@@ -7,7 +7,8 @@ from django.contrib.auth.models import User
 # ---------------------------------------------------------------------------
 
 class Genre(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    movie = models.ForeignKey('Movie', on_delete=models.CASCADE, related_name='genres', null=True, blank=True)
+    name = models.CharField(max_length=100)
 
     def __str__(self):
         return self.name
@@ -17,7 +18,8 @@ class Genre(models.Model):
 
 
 class Language(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    movie = models.ForeignKey('Movie', on_delete=models.CASCADE, related_name='languages', null=True, blank=True)
+    name = models.CharField(max_length=100)
 
     def __str__(self):
         return self.name
@@ -33,6 +35,7 @@ class CastMember(models.Model):
         ('producer', 'Producer'),
         ('writer', 'Writer'),
     ]
+    movie = models.ForeignKey('Movie', on_delete=models.CASCADE, related_name='cast', null=True, blank=True)
     name = models.CharField(max_length=255)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='actor')
     photo = models.ImageField(upload_to='cast/', blank=True, null=True)
@@ -94,10 +97,6 @@ class Movie(models.Model):
     # Primary poster
     poster = models.ImageField(upload_to='movies/posters/', blank=True, null=True)
 
-    # Relationships
-    genres = models.ManyToManyField(Genre, blank=True, related_name='movies')
-    languages = models.ManyToManyField(Language, blank=True, related_name='movies')
-    cast = models.ManyToManyField(CastMember, blank=True, related_name='movies')
 
     # Legacy field kept for backward compatibility with existing views/templates
     name = models.CharField(max_length=255, blank=True, editable=False)

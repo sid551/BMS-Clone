@@ -28,12 +28,27 @@ class ReportReviewForm(forms.ModelForm):
 
 
 class MovieForm(forms.ModelForm):
+    genre_names = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Action, Sci-Fi, Drama (comma separated)'}),
+        help_text="Separate genres with commas for this specific movie."
+    )
+    language_names = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. English, Hindi, Tamil (comma separated)'}),
+        help_text="Separate languages with commas for this specific movie."
+    )
+    cast_names = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Cillian Murphy, Emily Blunt, Robert Downey Jr.'}),
+        help_text="Separate actor names with commas for this specific movie."
+    )
+
     class Meta:
         model = Movie
         fields = [
             'title', 'description', 'duration_minutes', 'release_date',
-            'age_certification', 'trailer_url', 'status', 'poster',
-            'genres', 'languages', 'cast'
+            'age_certification', 'trailer_url', 'status', 'poster'
         ]
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Movie title'}),
@@ -44,10 +59,8 @@ class MovieForm(forms.ModelForm):
             'trailer_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://www.youtube.com/watch?v=...'}),
             'status': forms.Select(attrs={'class': 'form-control'}),
             'poster': forms.FileInput(attrs={'class': 'form-control-file'}),
-            'genres': forms.SelectMultiple(attrs={'class': 'form-control', 'style': 'height: 120px;'}),
-            'languages': forms.SelectMultiple(attrs={'class': 'form-control', 'style': 'height: 120px;'}),
-            'cast': forms.SelectMultiple(attrs={'class': 'form-control', 'style': 'height: 120px;'}),
         }
+
 
 
 class GenreForm(forms.ModelForm):

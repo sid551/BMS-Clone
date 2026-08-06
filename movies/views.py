@@ -962,40 +962,53 @@ def admin_movie_form(request, movie_id=None):
         form = MovieForm(request.POST, request.FILES, instance=movie)
         if form.is_valid():
             saved_movie = form.save()
+
+            # Process Movie-Specific Genres (Comma-Separated)
+            genre_names = form.cleaned_data.get('genre_names', '')
+            if genre_names:
+                for g_name in [g.strip() for g in genre_names.split(',') if g.strip()]:
+                    Genre.objects.get_or_create(movie=saved_movie, name=g_name)
+
+            # Process Movie-Specific Languages (Comma-Separated)
+            language_names = form.cleaned_data.get('language_names', '')
+            if language_names:
+                for l_name in [l.strip() for l in language_names.split(',') if l.strip()]:
+                    Language.objects.get_or_create(movie=saved_movie, name=l_name)
+
+            # Process Movie-Specific Cast (Comma-Separated)
+            cast_names = form.cleaned_data.get('cast_names', '')
+            if cast_names:
+                for c_name in [c.strip() for c in cast_names.split(',') if c.strip()]:
+                    CastMember.objects.get_or_create(movie=saved_movie, name=c_name, defaults={'role': 'actor'})
+
             messages.success(request, f'Movie "{saved_movie.title}" saved successfully.')
             return redirect('admin_manage_movies')
     else:
         form = MovieForm(instance=movie)
 
-    genres = Genre.objects.all()
-    languages = Language.objects.all()
-    cast_members = CastMember.objects.all()
-
-    movie_genres = list(movie.genres.values_list('id', flat=True)) if movie else []
-    movie_languages = list(movie.languages.values_list('id', flat=True)) if movie else []
-    movie_cast = list(movie.cast.values_list('id', flat=True)) if movie else []
+    genres = movie.genres.all() if movie else []
+    languages = movie.languages.all() if movie else []
+    cast_members = movie.cast.all() if movie else []
 
     return render(request, 'movies/custom_admin/movie_form.html', {
         'form': form,
         'movie': movie,
-        'all_genres': genres,
-        'all_languages': languages,
-        'all_cast': cast_members,
-        'movie_genres': movie_genres,
-        'movie_languages': movie_languages,
-        'movie_cast': movie_cast,
+        'movie_genres': genres,
+        'movie_languages': languages,
+        'movie_cast': cast_members,
     })
-
 
 
 @staff_or_admin_required
 def api_quick_add_genre(request):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
+        movie_id = request.POST.get('movie_id')
         if not name:
             return JsonResponse({'error': 'Genre name is required.'}, status=400)
-        genre, created = Genre.objects.get_or_create(name=name)
-        return JsonResponse({'id': genre.id, 'name': genre.name, 'created': created})
+        movie = get_object_or_404(Movie, id=movie_id) if movie_id else None
+        genre = Genre.objects.create(movie=movie, name=name)
+        return JsonResponse({'id': genre.id, 'name': genre.name})
     return JsonResponse({'error': 'Invalid method'}, status=405)
 
 
@@ -1013,10 +1026,12 @@ def api_quick_delete_genre(request, genre_id):
 def api_quick_add_language(request):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
+        movie_id = request.POST.get('movie_id')
         if not name:
             return JsonResponse({'error': 'Language name is required.'}, status=400)
-        lang, created = Language.objects.get_or_create(name=name)
-        return JsonResponse({'id': lang.id, 'name': lang.name, 'created': created})
+        movie = get_object_or_404(Movie, id=movie_id) if movie_id else None
+        lang = Language.objects.create(movie=movie, name=name)
+        return JsonResponse({'id': lang.id, 'name': lang.name})
     return JsonResponse({'error': 'Invalid method'}, status=405)
 
 
@@ -1035,10 +1050,12 @@ def api_quick_add_cast(request):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         role = request.POST.get('role', 'actor').strip()
+        movie_id = request.POST.get('movie_id')
         photo = request.FILES.get('photo')
         if not name:
             return JsonResponse({'error': 'Cast member name is required.'}, status=400)
-        cast = CastMember.objects.create(name=name, role=role)
+        movie = get_object_or_404(Movie, id=movie_id) if movie_id else None
+        cast = CastMember.objects.create(movie=movie, name=name, role=role)
         if photo:
             cast.photo = photo
             cast.save()
@@ -1054,6 +1071,7 @@ def api_quick_delete_cast(request, cast_id):
         cast.delete()
         return JsonResponse({'status': 'ok', 'id': cast_id, 'name': name})
     return JsonResponse({'error': 'Invalid method'}, status=405)
+
 
 
 @staff_or_admin_required

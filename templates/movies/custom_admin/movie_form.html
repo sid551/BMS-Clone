@@ -230,7 +230,7 @@
 
 
 <!-- ========================================================================= -->
-<!-- MANAGE / DELETE MODALS -->
+<!-- MANAGE / DELETE MODALS (WITH BULK BATCH SELECTION & DELETION) -->
 <!-- ========================================================================= -->
 
 <!-- 1. Manage / Delete Genres Modal -->
@@ -242,11 +242,24 @@
         <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
       </div>
       <div class="modal-body p-3">
-        <p class="small text-muted mb-3">Click delete to permanently remove a genre. It will be removed from form options.</p>
+        <!-- Master Control Bar -->
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+          <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="selectAllGenresCb">
+            <label class="custom-control-label small font-weight-bold text-dark" for="selectAllGenresCb">Select All</label>
+          </div>
+          <button type="button" class="btn btn-sm btn-danger font-weight-bold py-1 px-3 disabled" id="bulkDeleteGenresBtn" disabled>
+            <i class="fas fa-trash-alt mr-1"></i> Delete Selected (<span id="selectedGenresCount">0</span>)
+          </button>
+        </div>
+
         <div class="list-group list-group-flush border rounded" id="manageGenresList" style="max-height: 260px; overflow-y: auto;">
           {% for g in all_genres %}
             <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3" id="genre-item-{{ g.id }}">
-              <span class="font-weight-bold text-dark small"><i class="fas fa-tag text-info mr-2"></i>{{ g.name }}</span>
+              <div class="d-flex align-items-center">
+                <input type="checkbox" class="cb-select-genre mr-2" value="{{ g.id }}">
+                <span class="font-weight-bold text-dark small"><i class="fas fa-tag text-info mr-2"></i>{{ g.name }}</span>
+              </div>
               <button type="button" class="btn btn-xs btn-outline-danger btn-delete-genre" data-id="{{ g.id }}">
                 <i class="fas fa-trash mr-1"></i> Delete
               </button>
@@ -272,11 +285,24 @@
         <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
       </div>
       <div class="modal-body p-3">
-        <p class="small text-muted mb-3">Click delete to permanently remove a language. It will be removed from form options.</p>
+        <!-- Master Control Bar -->
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+          <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="selectAllLangsCb">
+            <label class="custom-control-label small font-weight-bold text-dark" for="selectAllLangsCb">Select All</label>
+          </div>
+          <button type="button" class="btn btn-sm btn-danger font-weight-bold py-1 px-3 disabled" id="bulkDeleteLangsBtn" disabled>
+            <i class="fas fa-trash-alt mr-1"></i> Delete Selected (<span id="selectedLangsCount">0</span>)
+          </button>
+        </div>
+
         <div class="list-group list-group-flush border rounded" id="manageLanguagesList" style="max-height: 260px; overflow-y: auto;">
           {% for l in all_languages %}
             <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3" id="lang-item-{{ l.id }}">
-              <span class="font-weight-bold text-dark small"><i class="fas fa-globe text-success mr-2"></i>{{ l.name }}</span>
+              <div class="d-flex align-items-center">
+                <input type="checkbox" class="cb-select-lang mr-2" value="{{ l.id }}">
+                <span class="font-weight-bold text-dark small"><i class="fas fa-globe text-success mr-2"></i>{{ l.name }}</span>
+              </div>
               <button type="button" class="btn btn-xs btn-outline-danger btn-delete-language" data-id="{{ l.id }}">
                 <i class="fas fa-trash mr-1"></i> Delete
               </button>
@@ -302,11 +328,22 @@
         <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
       </div>
       <div class="modal-body p-3">
-        <p class="small text-muted mb-3">Click delete to permanently remove a cast member. It will be removed from form options.</p>
+        <!-- Master Control Bar -->
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+          <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="selectAllCastCb">
+            <label class="custom-control-label small font-weight-bold text-dark" for="selectAllCastCb">Select All</label>
+          </div>
+          <button type="button" class="btn btn-sm btn-danger font-weight-bold py-1 px-3 disabled" id="bulkDeleteCastBtn" disabled>
+            <i class="fas fa-trash-alt mr-1"></i> Delete Selected (<span id="selectedCastCount">0</span>)
+          </button>
+        </div>
+
         <div class="list-group list-group-flush border rounded" id="manageCastList" style="max-height: 260px; overflow-y: auto;">
           {% for c in all_cast %}
             <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3" id="cast-item-{{ c.id }}">
               <div class="d-flex align-items-center">
+                <input type="checkbox" class="cb-select-cast mr-2" value="{{ c.id }}">
                 {% if c.photo_url %}
                   <img src="{{ c.photo_url }}" class="rounded-circle mr-2" style="width: 28px; height: 28px; object-fit: cover;">
                 {% else %}
@@ -326,7 +363,6 @@
           {% empty %}
             <div class="text-muted small p-3 text-center" id="no-cast-text">No cast members found.</div>
           {% endfor %}
-
         </div>
       </div>
       <div class="modal-footer bg-light py-2">
@@ -341,7 +377,8 @@
 <div id="taxonomyApiEndpoints" 
      data-add-genre="{% url 'api_quick_add_genre' %}" 
      data-add-language="{% url 'api_quick_add_language' %}" 
-     data-add-cast="{% url 'api_quick_add_cast' %}">
+     data-add-cast="{% url 'api_quick_add_cast' %}"
+     data-bulk-delete="{% url 'api_bulk_delete_taxonomies' %}">
 </div>
 
 <!-- ========================================================================= -->
@@ -365,6 +402,124 @@
     }
     const csrftoken = getCookie('csrftoken');
     const apiEndpoints = document.getElementById('taxonomyApiEndpoints').dataset;
+
+    // Helper: Update Bulk Delete Button State
+    function updateBulkState(itemType) {
+      let checkboxes, countSpan, deleteBtn, selectAllCb;
+      if (itemType === 'genre') {
+        checkboxes = document.querySelectorAll('.cb-select-genre');
+        countSpan = document.getElementById('selectedGenresCount');
+        deleteBtn = document.getElementById('bulkDeleteGenresBtn');
+        selectAllCb = document.getElementById('selectAllGenresCb');
+      } else if (itemType === 'language') {
+        checkboxes = document.querySelectorAll('.cb-select-lang');
+        countSpan = document.getElementById('selectedLangsCount');
+        deleteBtn = document.getElementById('bulkDeleteLangsBtn');
+        selectAllCb = document.getElementById('selectAllLangsCb');
+      } else if (itemType === 'cast') {
+        checkboxes = document.querySelectorAll('.cb-select-cast');
+        countSpan = document.getElementById('selectedCastCount');
+        deleteBtn = document.getElementById('bulkDeleteCastBtn');
+        selectAllCb = document.getElementById('selectAllCastCb');
+      }
+
+      const checked = Array.from(checkboxes).filter(cb => cb.checked);
+      const count = checked.length;
+      if (countSpan) countSpan.innerText = count;
+
+      if (deleteBtn) {
+        if (count > 0) {
+          deleteBtn.removeAttribute('disabled');
+          deleteBtn.classList.remove('disabled');
+        } else {
+          deleteBtn.setAttribute('disabled', 'disabled');
+          deleteBtn.classList.add('disabled');
+        }
+      }
+
+      if (selectAllCb) {
+        selectAllCb.checked = (checkboxes.length > 0 && count === checkboxes.length);
+      }
+    }
+
+    // Toggle Select All Checkbox
+    window.toggleSelectAll = function(itemType, isChecked) {
+      let selector = '';
+      if (itemType === 'genre') selector = '.cb-select-genre';
+      else if (itemType === 'language') selector = '.cb-select-lang';
+      else if (itemType === 'cast') selector = '.cb-select-cast';
+
+      document.querySelectorAll(selector).forEach(cb => {
+        cb.checked = isChecked;
+      });
+      updateBulkState(itemType);
+    };
+
+    // Attach Event Listeners to Checkboxes
+    document.addEventListener('change', function(e) {
+      if (e.target.id === 'selectAllGenresCb') toggleSelectAll('genre', e.target.checked);
+      else if (e.target.id === 'selectAllLangsCb') toggleSelectAll('language', e.target.checked);
+      else if (e.target.id === 'selectAllCastCb') toggleSelectAll('cast', e.target.checked);
+      else if (e.target.classList.contains('cb-select-genre')) updateBulkState('genre');
+      else if (e.target.classList.contains('cb-select-lang')) updateBulkState('language');
+      else if (e.target.classList.contains('cb-select-cast')) updateBulkState('cast');
+    });
+
+    // --- BULK DELETE HANDLER ---
+    window.submitBulkDelete = function(itemType) {
+      let selector = '', selectElementId = '', listElementId = '';
+      if (itemType === 'genre') {
+        selector = '.cb-select-genre:checked';
+        selectElementId = 'id_genres';
+        listElementId = 'manageGenresList';
+      } else if (itemType === 'language') {
+        selector = '.cb-select-lang:checked';
+        selectElementId = 'id_languages';
+        listElementId = 'manageLanguagesList';
+      } else if (itemType === 'cast') {
+        selector = '.cb-select-cast:checked';
+        selectElementId = 'id_cast';
+        listElementId = 'manageCastList';
+      }
+
+      const selectedCbs = document.querySelectorAll(selector);
+      const ids = Array.from(selectedCbs).map(cb => parseInt(cb.value));
+
+      if (ids.length === 0) { alert('Please select at least one item to delete.'); return; }
+      if (!confirm(`Are you sure you want to delete ${ids.length} selected item(s)?`)) return;
+
+      fetch(apiEndpoints.bulkDelete, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({ item_type: itemType, ids: ids })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          const selectElem = document.getElementById(selectElementId);
+
+          data.deleted_ids.forEach(id => {
+            // Remove row from modal list
+            const itemRow = document.getElementById(`${itemType === 'language' ? 'lang' : itemType}-item-${id}`);
+            if (itemRow) itemRow.remove();
+
+            // Remove option from movie form select box
+            if (selectElem) {
+              const opt = selectElem.querySelector(`option[value="${id}"]`);
+              if (opt) opt.remove();
+            }
+          });
+
+          updateBulkState(itemType);
+        } else if (data.error) {
+          alert(data.error);
+        }
+      })
+      .catch(err => console.error(err));
+    };
 
     // --- QUICK ADD GENRE ---
     window.submitQuickAddGenre = function() {
@@ -403,7 +558,10 @@
           const item = document.createElement('div');
           item.className = 'list-group-item d-flex justify-content-between align-items-center py-2 px-3';
           item.id = `genre-item-${data.id}`;
-          item.innerHTML = `<span class="font-weight-bold text-dark small"><i class="fas fa-tag text-info mr-2"></i>${data.name}</span>
+          item.innerHTML = `<div class="d-flex align-items-center">
+                              <input type="checkbox" class="cb-select-genre mr-2" value="${data.id}">
+                              <span class="font-weight-bold text-dark small"><i class="fas fa-tag text-info mr-2"></i>${data.name}</span>
+                            </div>
                             <button type="button" class="btn btn-xs btn-outline-danger btn-delete-genre" data-id="${data.id}"><i class="fas fa-trash mr-1"></i> Delete</button>`;
           list.appendChild(item);
         }
@@ -433,6 +591,7 @@
             const opt = select.querySelector(`option[value="${id}"]`);
             if (opt) opt.remove();
           }
+          updateBulkState('genre');
         }
       });
     };
@@ -474,7 +633,10 @@
           const item = document.createElement('div');
           item.className = 'list-group-item d-flex justify-content-between align-items-center py-2 px-3';
           item.id = `lang-item-${data.id}`;
-          item.innerHTML = `<span class="font-weight-bold text-dark small"><i class="fas fa-globe text-success mr-2"></i>${data.name}</span>
+          item.innerHTML = `<div class="d-flex align-items-center">
+                              <input type="checkbox" class="cb-select-lang mr-2" value="${data.id}">
+                              <span class="font-weight-bold text-dark small"><i class="fas fa-globe text-success mr-2"></i>${data.name}</span>
+                            </div>
                             <button type="button" class="btn btn-xs btn-outline-danger btn-delete-language" data-id="${data.id}"><i class="fas fa-trash mr-1"></i> Delete</button>`;
           list.appendChild(item);
         }
@@ -504,6 +666,7 @@
             const opt = select.querySelector(`option[value="${id}"]`);
             if (opt) opt.remove();
           }
+          updateBulkState('language');
         }
       });
     };
@@ -554,6 +717,7 @@
           item.className = 'list-group-item d-flex justify-content-between align-items-center py-2 px-3';
           item.id = `cast-item-${data.id}`;
           item.innerHTML = `<div class="d-flex align-items-center">
+                              <input type="checkbox" class="cb-select-cast mr-2" value="${data.id}">
                               <div class="bg-secondary text-white rounded-circle mr-2 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px; font-size: 11px;"><i class="fas fa-user"></i></div>
                               <div>
                                 <div class="font-weight-bold text-dark small">${data.name}</div>
@@ -590,6 +754,7 @@
             const opt = select.querySelector(`option[value="${id}"]`);
             if (opt) opt.remove();
           }
+          updateBulkState('cast');
         }
       });
     };
@@ -615,4 +780,3 @@
   });
 </script>
 {% endblock %}
-

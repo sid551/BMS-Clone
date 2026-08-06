@@ -1048,6 +1048,47 @@ def api_quick_delete_cast(request, cast_id):
     return JsonResponse({'error': 'Invalid method'}, status=405)
 
 
+@staff_or_admin_required
+def api_bulk_delete_taxonomies(request):
+    """
+    POST /movies/manage/api/taxonomies/bulk-delete/
+    Deletes a list of selected Genre, Language, or Cast IDs in a single batch query.
+    """
+    if request.method == 'POST':
+        try:
+            if request.content_type == 'application/json':
+                import json
+                data = json.loads(request.body)
+                item_type = data.get('item_type')
+                ids = data.get('ids', [])
+            else:
+                item_type = request.POST.get('item_type')
+                ids = request.POST.getlist('ids[]') or request.POST.getlist('ids')
+        except Exception:
+            return JsonResponse({'error': 'Invalid request body'}, status=400)
+
+        if not item_type or not ids:
+            return JsonResponse({'error': 'item_type and non-empty ids list are required.'}, status=400)
+
+        try:
+            int_ids = [int(i) for i in ids]
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'IDs must be valid integers.'}, status=400)
+
+        if item_type == 'genre':
+            count, _ = Genre.objects.filter(id__in=int_ids).delete()
+        elif item_type == 'language':
+            count, _ = Language.objects.filter(id__in=int_ids).delete()
+        elif item_type == 'cast':
+            count, _ = CastMember.objects.filter(id__in=int_ids).delete()
+        else:
+            return JsonResponse({'error': 'Invalid item_type specified.'}, status=400)
+
+        return JsonResponse({'status': 'ok', 'count': count, 'deleted_ids': int_ids, 'item_type': item_type})
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+
+
 
 @user_passes_test(is_staff_user, login_url='/login/')
 def admin_movie_delete(request, movie_id):

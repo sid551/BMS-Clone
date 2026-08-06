@@ -955,7 +955,7 @@ def admin_manage_movies(request):
     })
 
 
-@user_passes_test(is_staff_user, login_url='/login/')
+@staff_or_admin_required
 def admin_movie_form(request, movie_id=None):
     movie = get_object_or_404(Movie, id=movie_id) if movie_id else None
     if request.method == 'POST':
@@ -967,10 +967,86 @@ def admin_movie_form(request, movie_id=None):
     else:
         form = MovieForm(instance=movie)
 
+    genres = Genre.objects.all()
+    languages = Language.objects.all()
+    cast_members = CastMember.objects.all()
+
     return render(request, 'movies/custom_admin/movie_form.html', {
         'form': form,
         'movie': movie,
+        'all_genres': genres,
+        'all_languages': languages,
+        'all_cast': cast_members,
     })
+
+
+@staff_or_admin_required
+def api_quick_add_genre(request):
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        if not name:
+            return JsonResponse({'error': 'Genre name is required.'}, status=400)
+        genre, created = Genre.objects.get_or_create(name=name)
+        return JsonResponse({'id': genre.id, 'name': genre.name, 'created': created})
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+
+@staff_or_admin_required
+def api_quick_delete_genre(request, genre_id):
+    if request.method == 'POST':
+        genre = get_object_or_404(Genre, id=genre_id)
+        name = genre.name
+        genre.delete()
+        return JsonResponse({'status': 'ok', 'id': genre_id, 'name': name})
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+
+@staff_or_admin_required
+def api_quick_add_language(request):
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        if not name:
+            return JsonResponse({'error': 'Language name is required.'}, status=400)
+        lang, created = Language.objects.get_or_create(name=name)
+        return JsonResponse({'id': lang.id, 'name': lang.name, 'created': created})
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+
+@staff_or_admin_required
+def api_quick_delete_language(request, language_id):
+    if request.method == 'POST':
+        lang = get_object_or_404(Language, id=language_id)
+        name = lang.name
+        lang.delete()
+        return JsonResponse({'status': 'ok', 'id': language_id, 'name': name})
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+
+@staff_or_admin_required
+def api_quick_add_cast(request):
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        role = request.POST.get('role', 'actor').strip()
+        photo = request.FILES.get('photo')
+        if not name:
+            return JsonResponse({'error': 'Cast member name is required.'}, status=400)
+        cast = CastMember.objects.create(name=name, role=role)
+        if photo:
+            cast.photo = photo
+            cast.save()
+        return JsonResponse({'id': cast.id, 'name': cast.name, 'role': cast.get_role_display()})
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+
+@staff_or_admin_required
+def api_quick_delete_cast(request, cast_id):
+    if request.method == 'POST':
+        cast = get_object_or_404(CastMember, id=cast_id)
+        name = cast.name
+        cast.delete()
+        return JsonResponse({'status': 'ok', 'id': cast_id, 'name': name})
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
 
 
 @user_passes_test(is_staff_user, login_url='/login/')

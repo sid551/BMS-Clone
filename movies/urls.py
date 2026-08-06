@@ -29,6 +29,15 @@ urlpatterns = [
     path('manage/movies/add/', views.admin_movie_form, name='admin_movie_add'),
     path('manage/movies/<int:movie_id>/edit/', views.admin_movie_form, name='admin_movie_edit'),
     path('manage/movies/<int:movie_id>/delete/', views.admin_movie_delete, name='admin_movie_delete'),
+
+    # Quick Taxonomy API Routes
+    path('manage/api/genre/add/', views.api_quick_add_genre, name='api_quick_add_genre'),
+    path('manage/api/genre/<int:genre_id>/delete/', views.api_quick_delete_genre, name='api_quick_delete_genre'),
+    path('manage/api/language/add/', views.api_quick_add_language, name='api_quick_add_language'),
+    path('manage/api/language/<int:language_id>/delete/', views.api_quick_delete_language, name='api_quick_delete_language'),
+    path('manage/api/cast/add/', views.api_quick_add_cast, name='api_quick_add_cast'),
+    path('manage/api/cast/<int:cast_id>/delete/', views.api_quick_delete_cast, name='api_quick_delete_cast'),
+
     path('manage/theaters/', views.admin_manage_theaters, name='admin_manage_theaters'),
     path('manage/theaters/add/', views.admin_theater_form, name='admin_theater_add'),
     path('manage/theaters/<int:theater_id>/edit/', views.admin_theater_form, name='admin_theater_edit'),

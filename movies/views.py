@@ -1136,7 +1136,7 @@ def admin_resolve_report(request, report_id):
     return redirect('admin_manage_reports')
 
 
-@user_passes_test(is_staff_user, login_url='/login/')
+@staff_or_admin_required
 def admin_manage_taxonomies(request):
     genres = Genre.objects.all()
     languages = Language.objects.all()
@@ -1150,30 +1150,62 @@ def admin_manage_taxonomies(request):
 
     if request.method == 'POST':
         item_type = request.POST.get('item_type')
+
+        # Creation Handlers
         if item_type == 'genre':
             genre_form = GenreForm(request.POST, prefix='genre')
             if genre_form.is_valid():
-                genre_form.save()
-                messages.success(request, 'Genre added.')
+                g = genre_form.save()
+                messages.success(request, f'Genre "{g.name}" added successfully.')
                 return redirect('admin_manage_taxonomies')
         elif item_type == 'language':
             language_form = LanguageForm(request.POST, prefix='lang')
             if language_form.is_valid():
-                language_form.save()
-                messages.success(request, 'Language added.')
+                l = language_form.save()
+                messages.success(request, f'Language "{l.name}" added successfully.')
                 return redirect('admin_manage_taxonomies')
         elif item_type == 'cast':
             cast_form = CastMemberForm(request.POST, request.FILES, prefix='cast')
             if cast_form.is_valid():
-                cast_form.save()
-                messages.success(request, 'Cast member added.')
+                c = cast_form.save()
+                messages.success(request, f'Cast member "{c.name}" added successfully.')
                 return redirect('admin_manage_taxonomies')
         elif item_type == 'theater':
             theater_form = TheaterForm(request.POST, prefix='theater')
             if theater_form.is_valid():
-                theater_form.save()
-                messages.success(request, 'Theater added.')
+                t = theater_form.save()
+                messages.success(request, f'Theater "{t.name}" added successfully.')
                 return redirect('admin_manage_taxonomies')
+
+        # Deletion Handlers
+        elif item_type == 'delete_genre':
+            genre_id = request.POST.get('genre_id')
+            g = get_object_or_404(Genre, id=genre_id)
+            g_name = g.name
+            g.delete()
+            messages.success(request, f'Genre "{g_name}" deleted successfully.')
+            return redirect('admin_manage_taxonomies')
+        elif item_type == 'delete_language':
+            lang_id = request.POST.get('language_id')
+            l = get_object_or_404(Language, id=lang_id)
+            l_name = l.name
+            l.delete()
+            messages.success(request, f'Language "{l_name}" deleted successfully.')
+            return redirect('admin_manage_taxonomies')
+        elif item_type == 'delete_cast':
+            cast_id = request.POST.get('cast_id')
+            c = get_object_or_404(CastMember, id=cast_id)
+            c_name = c.name
+            c.delete()
+            messages.success(request, f'Cast member "{c_name}" deleted successfully.')
+            return redirect('admin_manage_taxonomies')
+        elif item_type == 'delete_theater':
+            t_id = request.POST.get('theater_id')
+            t = get_object_or_404(Theater, id=t_id)
+            t_name = t.name
+            t.delete()
+            messages.success(request, f'Theater "{t_name}" deleted successfully.')
+            return redirect('admin_manage_taxonomies')
 
     return render(request, 'movies/custom_admin/manage_taxonomies.html', {
         'genres': genres,
@@ -1185,6 +1217,7 @@ def admin_manage_taxonomies(request):
         'cast_form': cast_form,
         'theater_form': theater_form,
     })
+
 
 
 @user_passes_test(is_staff_user, login_url='/login/')

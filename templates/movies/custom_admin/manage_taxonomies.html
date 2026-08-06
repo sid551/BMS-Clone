@@ -1,63 +1,110 @@
-{% extends "users/basic.html" %}
+{% extends "movies/custom_admin/base_admin.html" %}
 
-{% block title %}Genres, Languages & Cast - Admin{% endblock %}
+{% block title %}Taxonomies & Catalog Management - BookMySeat Admin{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-  {% include 'movies/custom_admin/_admin_nav.html' %}
-  <h2 class="mb-4">Genres, Languages, Cast & Theaters</h2>
+{% block admin_content %}
+<div class="container-fluid p-0">
 
-
-  {% for message in messages %}
-    <div class="alert alert-info alert-dismissible fade show">
-      {{ message }}
-      <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+    <div>
+      <h3 class="font-weight-bold text-dark mb-1">
+        <i class="fas fa-tags text-primary mr-2"></i>Taxonomies & Catalog Reference Manager
+      </h3>
+      <p class="text-muted small mb-0">Add or remove Genres, Languages, Cast/Crew Members, and Theaters for movie cataloging.</p>
     </div>
-  {% endfor %}
+    <div class="mt-2 mt-sm-0">
+      <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm font-weight-bold">
+        <i class="fas fa-arrow-left mr-1"></i> Back to Dashboard
+      </a>
+    </div>
+  </div>
 
   <div class="row">
-    <!-- Genres -->
-    <div class="col-md-6 mb-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header bg-primary text-white font-weight-bold">
-          <i class="fas fa-tags mr-2"></i>Genres
+    <!-- Genres Section -->
+    <div class="col-lg-6 mb-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+          <h6 class="font-weight-bold text-dark mb-0">
+            <i class="fas fa-tags text-primary mr-2"></i>Genres Manager
+          </h6>
+          <span class="badge badge-primary font-weight-bold">{{ genres|length }} Total</span>
         </div>
-        <div class="card-body">
-          <form method="post" class="form-inline mb-3">
+        <div class="card-body p-3">
+          <!-- Add Genre Form -->
+          <form method="post" class="form-inline mb-4 p-2 bg-light rounded border">
             {% csrf_token %}
             <input type="hidden" name="item_type" value="genre">
-            {{ genre_form.name }}
-            <button type="submit" class="btn btn-success font-weight-bold ml-2"><i class="fas fa-save mr-1"></i> Save Genre</button>
+            <div class="form-group mr-2 mb-2 mb-sm-0 flex-grow-1">
+              <label for="id_genre-name" class="sr-only">Genre Name</label>
+              {{ genre_form.name }}
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm font-weight-bold">
+              <i class="fas fa-plus mr-1"></i> Add Genre
+            </button>
           </form>
-          <div class="d-flex flex-wrap">
+
+          <!-- List of Genres -->
+          <div class="d-flex flex-wrap align-items-center" style="gap: 8px;">
             {% for g in genres %}
-              <span class="badge badge-info p-2 m-1" style="font-size: 13px;">{{ g.name }}</span>
+              <div class="badge badge-light border text-dark p-2 d-inline-flex align-items-center rounded-pill shadow-xs" style="font-size: 13px;">
+                <i class="fas fa-tag text-info mr-2"></i> {{ g.name }}
+                <form method="post" class="d-inline ml-2" onsubmit="return confirm('Are you sure you want to delete the genre \'{{ g.name }}\'?');">
+                  {% csrf_token %}
+                  <input type="hidden" name="item_type" value="delete_genre">
+                  <input type="hidden" name="genre_id" value="{{ g.id }}">
+                  <button type="submit" class="btn btn-xs btn-link text-danger p-0 border-0 ml-1" title="Delete Genre">
+                    <i class="fas fa-times-circle"></i>
+                  </button>
+                </form>
+              </div>
             {% empty %}
-              <span class="text-muted">No genres added.</span>
+              <div class="text-muted small py-3 text-center w-100">No genres added yet.</div>
             {% endfor %}
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Languages -->
-    <div class="col-md-6 mb-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header bg-info text-white font-weight-bold">
-          <i class="fas fa-language mr-2"></i>Languages
+    <!-- Languages Section -->
+    <div class="col-lg-6 mb-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+          <h6 class="font-weight-bold text-dark mb-0">
+            <i class="fas fa-language text-success mr-2"></i>Languages Manager
+          </h6>
+          <span class="badge badge-success font-weight-bold">{{ languages|length }} Total</span>
         </div>
-        <div class="card-body">
-          <form method="post" class="form-inline mb-3">
+        <div class="card-body p-3">
+          <!-- Add Language Form -->
+          <form method="post" class="form-inline mb-4 p-2 bg-light rounded border">
             {% csrf_token %}
             <input type="hidden" name="item_type" value="language">
-            {{ language_form.name }}
-            <button type="submit" class="btn btn-success font-weight-bold ml-2"><i class="fas fa-save mr-1"></i> Save Language</button>
+            <div class="form-group mr-2 mb-2 mb-sm-0 flex-grow-1">
+              <label for="id_lang-name" class="sr-only">Language Name</label>
+              {{ language_form.name }}
+            </div>
+            <button type="submit" class="btn btn-success btn-sm font-weight-bold">
+              <i class="fas fa-plus mr-1"></i> Add Language
+            </button>
           </form>
-          <div class="d-flex flex-wrap">
+
+          <!-- List of Languages -->
+          <div class="d-flex flex-wrap align-items-center" style="gap: 8px;">
             {% for l in languages %}
-              <span class="badge badge-secondary p-2 m-1" style="font-size: 13px;">{{ l.name }}</span>
+              <div class="badge badge-light border text-dark p-2 d-inline-flex align-items-center rounded-pill shadow-xs" style="font-size: 13px;">
+                <i class="fas fa-globe text-success mr-2"></i> {{ l.name }}
+                <form method="post" class="d-inline ml-2" onsubmit="return confirm('Are you sure you want to delete the language \'{{ l.name }}\'?');">
+                  {% csrf_token %}
+                  <input type="hidden" name="item_type" value="delete_language">
+                  <input type="hidden" name="language_id" value="{{ l.id }}">
+                  <button type="submit" class="btn btn-xs btn-link text-danger p-0 border-0 ml-1" title="Delete Language">
+                    <i class="fas fa-times-circle"></i>
+                  </button>
+                </form>
+              </div>
             {% empty %}
-              <span class="text-muted">No languages added.</span>
+              <div class="text-muted small py-3 text-center w-100">No languages added yet.</div>
             {% endfor %}
           </div>
         </div>
@@ -66,79 +113,135 @@
   </div>
 
   <div class="row">
-    <!-- Cast Members -->
-    <div class="col-md-6 mb-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header bg-dark text-white font-weight-bold">
-          <i class="fas fa-users mr-2"></i>Cast & Crew Members
+    <!-- Cast & Crew Section -->
+    <div class="col-lg-6 mb-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+          <h6 class="font-weight-bold text-dark mb-0">
+            <i class="fas fa-users text-dark mr-2"></i>Cast & Crew Members Manager
+          </h6>
+          <span class="badge badge-dark font-weight-bold">{{ cast_members|length }} Total</span>
         </div>
-        <div class="card-body">
-          <form method="post" enctype="multipart/form-data" class="mb-3 border-bottom pb-3">
+        <div class="card-body p-3">
+          <!-- Add Cast Form -->
+          <form method="post" enctype="multipart/form-data" class="mb-4 p-3 bg-light rounded border">
             {% csrf_token %}
             <input type="hidden" name="item_type" value="cast">
-            <div class="form-group mb-2">
-              <label class="small font-weight-bold">Name</label>
-              {{ cast_form.name }}
+            <div class="form-row">
+              <div class="form-group col-md-6 mb-2">
+                <label class="small font-weight-bold mb-1">Full Name</label>
+                {{ cast_form.name }}
+              </div>
+              <div class="form-group col-md-6 mb-2">
+                <label class="small font-weight-bold mb-1">Role</label>
+                {{ cast_form.role }}
+              </div>
+              <div class="form-group col-md-12 mb-2">
+                <label class="small font-weight-bold mb-1">Photo (Optional)</label>
+                {{ cast_form.photo }}
+              </div>
             </div>
-            <div class="form-group mb-2">
-              <label class="small font-weight-bold">Role</label>
-              {{ cast_form.role }}
-            </div>
-            <div class="form-group mb-2">
-              <label class="small font-weight-bold">Photo</label>
-              {{ cast_form.photo }}
-            </div>
-            <button type="submit" class="btn btn-success font-weight-bold mt-2"><i class="fas fa-save mr-1"></i> Save & Apply Cast</button>
+            <button type="submit" class="btn btn-dark btn-sm font-weight-bold mt-2">
+              <i class="fas fa-user-plus mr-1"></i> Add Cast Member
+            </button>
           </form>
-          <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+
+          <!-- List of Cast Members -->
+          <div class="list-group list-group-flush border rounded" style="max-height: 300px; overflow-y: auto;">
             {% for c in cast_members %}
-              <div class="list-group-item d-flex justify-content-between align-items-center py-2">
-                <span><strong>{{ c.name }}</strong> <small class="text-muted">({{ c.get_role_display }})</small></span>
+              <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                <div class="d-flex align-items-center">
+                  {% if c.photo_url %}
+                    <img src="{{ c.photo_url }}" alt="{{ c.name }}" class="rounded-circle mr-2" style="width: 36px; height: 36px; object-fit: cover;">
+                  {% else %}
+                    <div class="avatar bg-secondary text-white rounded-circle mr-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; font-size: 14px;">
+                      <i class="fas fa-user"></i>
+                    </div>
+                  {% endif %}
+                  <div>
+                    <div class="font-weight-bold text-dark small mb-0">{{ c.name }}</div>
+                    <span class="badge badge-soft-primary text-primary bg-light" style="font-size: 10px;">{{ c.get_role_display }}</span>
+                  </div>
+                </div>
+
+                <!-- Delete Cast Button -->
+                <form method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete cast member \'{{ c.name }}\'?');">
+                  {% csrf_token %}
+                  <input type="hidden" name="item_type" value="delete_cast">
+                  <input type="hidden" name="cast_id" value="{{ c.id }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1" title="Delete Cast Member">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </form>
               </div>
             {% empty %}
-              <span class="text-muted">No cast members added.</span>
+              <div class="text-muted small py-4 text-center">No cast members added yet.</div>
             {% endfor %}
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Theaters -->
-    <div class="col-md-6 mb-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header bg-success text-white font-weight-bold">
-          <i class="fas fa-building mr-2"></i>Quick Theater Setup
+    <!-- Quick Theater Setup Section -->
+    <div class="col-lg-6 mb-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+          <h6 class="font-weight-bold text-dark mb-0">
+            <i class="fas fa-building text-info mr-2"></i>Quick Theater Setup
+          </h6>
+          <span class="badge badge-info font-weight-bold">{{ theaters|length }} Total</span>
         </div>
-        <div class="card-body">
-          <form method="post" class="mb-3 border-bottom pb-3">
+        <div class="card-body p-3">
+          <!-- Add Theater Form -->
+          <form method="post" class="mb-4 p-3 bg-light rounded border">
             {% csrf_token %}
             <input type="hidden" name="item_type" value="theater">
-            <div class="form-group mb-2">
-              <label class="small font-weight-bold">Theater Name</label>
-              {{ theater_form.name }}
+            <div class="form-row">
+              <div class="form-group col-md-5 mb-2">
+                <label class="small font-weight-bold mb-1">Theater Name</label>
+                {{ theater_form.name }}
+              </div>
+              <div class="form-group col-md-4 mb-2">
+                <label class="small font-weight-bold mb-1">Location</label>
+                {{ theater_form.location }}
+              </div>
+              <div class="form-group col-md-3 mb-2">
+                <label class="small font-weight-bold mb-1">Total Seats</label>
+                {{ theater_form.total_seats }}
+              </div>
             </div>
-            <div class="form-group mb-2">
-              <label class="small font-weight-bold">Location</label>
-              {{ theater_form.location }}
-            </div>
-            <div class="form-group mb-2">
-              <label class="small font-weight-bold">Total Seats</label>
-              {{ theater_form.total_seats }}
-            </div>
-            <button type="submit" class="btn btn-success font-weight-bold mt-2"><i class="fas fa-save mr-1"></i> Save & Apply Theater</button>
+            <button type="submit" class="btn btn-info btn-sm font-weight-bold text-white mt-2">
+              <i class="fas fa-plus mr-1"></i> Add Theater
+            </button>
           </form>
-          <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+
+          <!-- List of Theaters -->
+          <div class="list-group list-group-flush border rounded" style="max-height: 300px; overflow-y: auto;">
             {% for t in theaters %}
-              <div class="list-group-item d-flex justify-content-between align-items-center py-2">
-                <span><strong>{{ t.name }}</strong> <small class="text-muted">({{ t.location }} - {{ t.total_seats }} seats)</small></span>
+              <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                <div>
+                  <div class="font-weight-bold text-dark small mb-0">{{ t.name }}</div>
+                  <small class="text-muted"><i class="fas fa-map-marker-alt mr-1"></i>{{ t.location|default:"Main Venue" }} • {{ t.total_seats }} seats</small>
+                </div>
+
+                <!-- Delete Theater Button -->
+                <form method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete theater \'{{ t.name }}\'?');">
+                  {% csrf_token %}
+                  <input type="hidden" name="item_type" value="delete_theater">
+                  <input type="hidden" name="theater_id" value="{{ t.id }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1" title="Delete Theater">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </form>
               </div>
             {% empty %}
-              <span class="text-muted">No theaters added.</span>
+              <div class="text-muted small py-4 text-center">No theaters added yet.</div>
             {% endfor %}
           </div>
         </div>
       </div>
     </div>
   </div>
+
 </div>
 {% endblock %}

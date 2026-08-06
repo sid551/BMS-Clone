@@ -35,9 +35,10 @@
       </div>
 
       <div class="btn-group btn-group-sm mb-2 mb-md-0" role="group" aria-label="Quick Presets">
-        <button type="button" class="btn btn-outline-secondary" onclick="setDatePreset('today')">Today</button>
-        <button type="button" class="btn btn-outline-secondary" onclick="setDatePreset('7days')">Last 7 Days</button>
-        <button type="button" class="btn btn-outline-secondary" onclick="setDatePreset('30days')">Last 30 Days</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="setDatePreset('daily')"><i class="fas fa-calendar-day mr-1"></i> Daily</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="setDatePreset('weekly')"><i class="fas fa-calendar-week mr-1"></i> Weekly</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="setDatePreset('monthly')"><i class="fas fa-calendar-alt mr-1"></i> Monthly</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="setDatePreset('yearly')"><i class="fas fa-calendar mr-1"></i> Yearly</button>
         <a href="{{ request.path }}" class="btn btn-outline-danger" title="Reset Filters"><i class="fas fa-undo mr-1"></i> Reset</a>
       </div>
     </form>
@@ -78,18 +79,23 @@
       return `${year}-${month}-${day}`;
     }
 
-    if (preset === 'today') {
+    if (preset === 'today' || preset === 'daily') {
       const todayStr = formatDate(today);
       startDateInput.value = todayStr;
       endDateInput.value = todayStr;
-    } else if (preset === '7days') {
+    } else if (preset === '7days' || preset === 'weekly') {
       const past = new Date(today);
       past.setDate(past.getDate() - 7);
       startDateInput.value = formatDate(past);
       endDateInput.value = formatDate(today);
-    } else if (preset === '30days') {
+    } else if (preset === '30days' || preset === 'monthly') {
       const past = new Date(today);
       past.setDate(past.getDate() - 30);
+      startDateInput.value = formatDate(past);
+      endDateInput.value = formatDate(today);
+    } else if (preset === '365days' || preset === 'yearly') {
+      const past = new Date(today);
+      past.setDate(past.getDate() - 365);
       startDateInput.value = formatDate(past);
       endDateInput.value = formatDate(today);
     }

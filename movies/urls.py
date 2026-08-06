@@ -23,6 +23,8 @@ urlpatterns = [
 
     # Custom Admin Management Routes
     path('manage/', views.admin_dashboard, name='admin_dashboard'),
+    path('manage/export/csv/', views.admin_export_csv, name='admin_export_csv'),
+
     path('manage/movies/', views.admin_manage_movies, name='admin_manage_movies'),
     path('manage/movies/add/', views.admin_movie_form, name='admin_movie_add'),
     path('manage/movies/<int:movie_id>/edit/', views.admin_movie_form, name='admin_movie_edit'),

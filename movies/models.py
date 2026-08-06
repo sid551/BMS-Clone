@@ -355,6 +355,12 @@ class ShowSchedule(models.Model):
     class Meta:
         ordering = ['show_time']
         unique_together = ('screen', 'show_time')
+        indexes = [
+            models.Index(fields=['show_time']),
+            models.Index(fields=['movie', 'show_time']),
+            models.Index(fields=['theater', 'show_time']),
+        ]
+
 
 
 # ---------------------------------------------------------------------------
@@ -504,7 +510,13 @@ class Booking(models.Model):
         indexes = [
             models.Index(fields=['booking_reference']),
             models.Index(fields=['user', '-booked_at']),
+            models.Index(fields=['status', '-booked_at']),
+            models.Index(fields=['booked_at']),
+            models.Index(fields=['movie', 'status']),
+            models.Index(fields=['theater', 'status']),
+            models.Index(fields=['show_schedule', 'status']),
         ]
+
 
     def __str__(self):
         return f'{self.booking_reference} - {self.user.username} ({self.status})'
@@ -786,8 +798,10 @@ class Payment(models.Model):
         indexes = [
             models.Index(fields=['gateway_order_id']),
             models.Index(fields=['user', '-created_at']),
-            models.Index(fields=['status']),
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['created_at']),
         ]
+
 
     def __str__(self):
         return f'Payment {self.gateway_order_id} [{self.status}] ₹{self.amount}'

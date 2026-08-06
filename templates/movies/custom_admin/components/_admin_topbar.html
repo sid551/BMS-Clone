@@ -1,0 +1,46 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm px-3 border-bottom border-secondary">
+  <div class="d-flex align-items-center">
+    <button class="btn btn-outline-secondary text-white mr-3 d-md-none" id="sidebarToggleBtn" type="button" aria-label="Toggle Sidebar">
+      <i class="fas fa-bars"></i>
+    </button>
+    <a class="navbar-brand font-weight-bold text-white d-flex align-items-center mb-0" href="{% url 'admin_dashboard' %}">
+      <i class="fas fa-film text-danger mr-2"></i> Custom Admin Console
+    </a>
+  </div>
+
+  <div class="ml-auto d-flex align-items-center">
+    <span class="badge badge-success px-2 py-1 mr-3 d-none d-sm-inline-block font-weight-bold" style="font-size: 11px;">
+      <i class="fas fa-user-check mr-1"></i>STAFF AUTHORIZED
+    </span>
+
+    <div class="dropdown">
+      <button class="btn btn-dark dropdown-toggle text-white d-flex align-items-center border-secondary" type="button" id="adminUserDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <div class="avatar bg-primary text-white rounded-circle mr-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 14px;">
+          {{ user.username|first|upper }}
+        </div>
+        <span class="d-none d-md-inline font-weight-bold mr-1">{{ user.username }}</span>
+      </button>
+      <div class="dropdown-menu dropdown-menu-right bg-dark text-white border-secondary shadow" aria-labelledby="adminUserDropdown">
+        <div class="dropdown-header text-muted font-weight-bold" style="font-size: 11px;">ROLE & PERMISSIONS</div>
+        <div class="dropdown-item text-light small disabled">
+          <i class="fas fa-user-shield text-info mr-2"></i>
+          {% if user.is_superuser %}Super Administrator{% else %}Staff Member{% endif %}
+        </div>
+        <div class="dropdown-divider border-secondary"></div>
+        <a class="dropdown-item text-light" href="{% url 'profile' %}">
+          <i class="fas fa-user-circle mr-2 text-warning"></i> My Profile
+        </a>
+        <a class="dropdown-item text-light" href="/" target="_blank">
+          <i class="fas fa-external-link-alt mr-2 text-success"></i> View Main Site
+        </a>
+        <div class="dropdown-divider border-secondary"></div>
+        <form method="Post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</nav>

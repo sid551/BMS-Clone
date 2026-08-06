@@ -34,8 +34,32 @@ def cleanup_completed_schedules():
     return count
 
 
+from django.contrib.auth import get_user_model
+from functools import wraps
+from django.http import HttpResponseForbidden
+
+
 def is_staff_user(user):
-    return user.is_authenticated and user.is_staff
+    return bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
+
+
+def staff_or_admin_required(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(f"/login/?next={request.path}")
+        if not (request.user.is_staff or request.user.is_superuser):
+            return HttpResponseForbidden(
+                '<div style="font-family: sans-serif; text-align: center; margin-top: 100px;">'
+                '  <h1 style="color: #dc3545;">403 Forbidden</h1>'
+                '  <p>Administrator or Staff permissions are required to access this section.</p>'
+                '  <a href="/" style="color: #007bff;">Return to Home Page</a>'
+                '</div>'
+            )
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
+
 
 
 def movie_list(request):
@@ -887,30 +911,36 @@ def razorpay_webhook(request):
 
     return JsonResponse({'status': result.get('status', 'ok')}, status=200)
 
-@user_passes_test(is_staff_user, login_url='/login/')
+from .analytics_service import get_full_admin_analytics
+from .csv_export_service import export_report_to_csv
+
+
+@staff_or_admin_required
 def admin_dashboard(request):
-    movie_count = Movie.objects.count()
-    genre_count = Genre.objects.count()
-    language_count = Language.objects.count()
-    cast_count = CastMember.objects.count()
-    theater_count = Theater.objects.count()
-    schedule_count = ShowSchedule.objects.count()
-    pending_reports = ReportedReview.objects.filter(status='pending').count()
+    start_date = request.GET.get('start_date', '').strip()
+    end_date = request.GET.get('end_date', '').strip()
 
-    recent_movies = Movie.objects.all()[:5]
-    recent_reports = ReportedReview.objects.select_related('review', 'reported_by').filter(status='pending')[:5]
+    context = get_full_admin_analytics(start_date, end_date)
 
-    return render(request, 'movies/custom_admin/dashboard.html', {
-        'movie_count': movie_count,
-        'genre_count': genre_count,
-        'language_count': language_count,
-        'cast_count': cast_count,
-        'theater_count': theater_count,
-        'schedule_count': schedule_count,
-        'pending_reports': pending_reports,
-        'recent_movies': recent_movies,
-        'recent_reports': recent_reports,
-    })
+    return render(request, 'movies/custom_admin/dashboard.html', context)
+
+
+@staff_or_admin_required
+def admin_export_csv(request):
+    """
+    GET /movies/manage/export/csv/?report_type=...&start_date=...&end_date=...
+
+    Streams CSV export file for specified report_type filtered by date range.
+    """
+    report_type = request.GET.get('report_type', 'summary').strip()
+    start_date = request.GET.get('start_date', '').strip()
+    end_date = request.GET.get('end_date', '').strip()
+
+    return export_report_to_csv(report_type, start_date, end_date)
+
+
+
+
 
 
 @user_passes_test(is_staff_user, login_url='/login/')

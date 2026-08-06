@@ -23,7 +23,16 @@
         <p class="mb-1">
           <small class="text-muted">{{ m.release_date|date:"M Y" }}</small>
         </p>
-        {% endif %} {% for g in m.genres.all|slice:":2" %}
+        {% endif %}
+        {% if m.description %}
+        <p class="mb-1 text-muted" style="font-size: 11px; line-height: 1.3;">
+          {{ m.description|truncatechars:45 }}
+          {% if m.description|length > 45 %}
+            <span class="text-primary font-weight-bold">Read More &raquo;</span>
+          {% endif %}
+        </p>
+        {% endif %}
+        {% for g in m.genres.all|slice:":2" %}
         <span class="badge badge-light border" style="font-size: 10px"
           >{{ g.name }}</span
         >

@@ -36,16 +36,37 @@
           alt="{{ movie.title|default:movie.name }}"
           style="height: 300px; object-fit: cover"
         />
-        <div class="card-body">
-          <h5 class="card-title">{{ movie.name }}</h5>
-          <p class="card-text">
-            <i class="fas fa-star text-warning"></i> {{ movie.rating }}
-          </p>
-          <p class="card-text">
-            <small class="text-muted">
-              <i class="fas fa-users"></i> Cast: {{ movie.cast }}
-            </small>
-          </p>
+        <div class="card-body d-flex flex-column justify-content-between p-3">
+          <div>
+            <h5 class="card-title font-weight-bold text-dark mb-2">{{ movie.title|default:movie.name }}</h5>
+            <p class="card-text mb-2 text-warning font-weight-bold" style="font-size: 14px;">
+              <i class="fas fa-star"></i> {{ movie.rating }} / 5.0
+            </p>
+
+            <!-- Movie Description with Truncation & Read More Link -->
+            <p class="card-text text-muted small mb-2" style="font-size: 13px; line-height: 1.4;">
+              {% if movie.description %}
+                {{ movie.description|truncatechars:85 }}
+                {% if movie.description|length > 85 %}
+                  <a href="{% url 'movie_detail' movie.id %}" class="text-primary font-weight-bold ml-1">Read More &raquo;</a>
+                {% endif %}
+              {% else %}
+                <em class="text-muted">No description available.</em>
+              {% endif %}
+            </p>
+
+            {% if movie.cast.all %}
+            <p class="card-text mb-1">
+              <small class="text-muted">
+                <i class="fas fa-users text-secondary mr-1"></i>
+                <strong>Cast:</strong>
+                {% for c in movie.cast.all|slice:":3" %}
+                  {{ c.name }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+              </small>
+            </p>
+            {% endif %}
+          </div>
         </div>
         <div class="card-footer bg-white border-top-0">
           <a

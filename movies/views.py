@@ -7,6 +7,7 @@ from django.http import JsonResponse
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db.models import Q, Count
 from django.utils import timezone
 from .models import (
@@ -60,20 +61,41 @@ def staff_or_admin_required(view_func):
     return _wrapped_view
 
 
+from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, Min, F
+from django.utils import timezone
+
+
+from .discovery_service import MovieDiscoveryService
+
+
+def build_filtered_movies_queryset(params):
+    return MovieDiscoveryService.build_filtered_queryset(params)
+
+
+def apply_sorting(queryset, sort_by):
+    return MovieDiscoveryService.apply_sorting(queryset, sort_by)
 
 
 def movie_list(request):
     cleanup_completed_schedules()
-    search_query = request.GET.get('search')
-    movies = Movie.objects.prefetch_related('genres', 'languages')
-    if search_query:
-        movies = movies.filter(title__icontains=search_query)
-    return render(request, 'movies/movie_list.html', {'movies': movies})
+    context = MovieDiscoveryService.get_discovery_context(request, per_page=9)
+    return render(request, 'movies/movie_list.html', context)
 
 
 def movie_detail(request, movie_id):
     now = timezone.now()
     movie = get_object_or_404(Movie, id=movie_id)
+
+    # Track recently viewed movie in user session
+    recently_viewed = request.session.get('recently_viewed_movies', [])
+    if movie_id in recently_viewed:
+        recently_viewed.remove(movie_id)
+    recently_viewed.insert(0, movie_id)
+    request.session['recently_viewed_movies'] = recently_viewed[:10]
+    request.session.modified = True
 
     schedules = (
         ShowSchedule.objects

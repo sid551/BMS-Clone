@@ -87,3 +87,84 @@ def get_recently_released(exclude_ids=None, limit=10):
     if exclude_ids:
         qs_result = qs_result.exclude(pk__in=exclude_ids)
     return qs_result[:limit]
+
+
+def get_personalized_recommendations(user, request=None, limit=6):
+    """
+    Generate rule-based movie recommendations for an authenticated user.
+    Analyzes user's booking history and session-tracked recently viewed movies.
+    Recommends unbooked movies matching preferred genres or languages.
+    Falls back to trending/popular movies if user history is sparse.
+    Excludes movies the user has already booked.
+    """
+    from .models import Booking, Genre, Language
+
+    if not user or not user.is_authenticated:
+        return []
+
+    # 1. Fetch user's booked movie IDs
+    booked_movie_ids = list(
+        Booking.objects
+        .filter(user=user, status__in=['confirmed', 'completed', 'pending'])
+        .values_list('movie_id', flat=True)
+        .distinct()
+    )
+
+    # 2. Fetch session recently viewed movie IDs
+    recently_viewed_ids = []
+    if request and hasattr(request, 'session'):
+        recently_viewed_ids = request.session.get('recently_viewed_movies', [])
+
+    # Exclude movies already booked by user
+    exclude_set = set(m_id for m_id in booked_movie_ids if m_id is not None)
+
+    # History movie IDs = booked movies + recently viewed movies
+    history_movie_ids = list(set([m_id for m_id in (booked_movie_ids + recently_viewed_ids) if m_id is not None]))
+
+    recommendations = []
+
+    if history_movie_ids:
+        # Extract preferred genre & language names from history movies
+        pref_genres = list(
+            Genre.objects
+            .filter(movie_id__in=history_movie_ids)
+            .values_list('name', flat=True)
+            .distinct()
+        )
+        pref_langs = list(
+            Language.objects
+            .filter(movie_id__in=history_movie_ids)
+            .values_list('name', flat=True)
+            .distinct()
+        )
+
+        if pref_genres or pref_langs:
+            candidate_qs = Movie.objects.exclude(pk__in=exclude_set)
+
+            filter_conditions = Q()
+            if pref_genres:
+                filter_conditions |= Q(genres__name__in=pref_genres)
+            if pref_langs:
+                filter_conditions |= Q(languages__name__in=pref_langs)
+
+            candidate_qs = (
+                candidate_qs
+                .filter(filter_conditions)
+                .annotate(
+                    genre_matches=Count('genres', filter=Q(genres__name__in=pref_genres)) if pref_genres else Count('id')
+                )
+                .order_by('-genre_matches', '-rating', '-release_date')
+                .prefetch_related('genres', 'languages')
+                .distinct()[:limit]
+            )
+            recommendations = list(candidate_qs)
+
+    # 3. Fallback / Top up with trending movies if insufficient candidates
+    if len(recommendations) < limit:
+        needed = limit - len(recommendations)
+        already_recommended_ids = exclude_set.union({m.pk for m in recommendations})
+        trending_fallback = list(get_trending_movies(exclude_ids=already_recommended_ids, limit=needed))
+        recommendations.extend(trending_fallback)
+
+    return recommendations[:limit]
+

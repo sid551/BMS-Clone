@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 
 class Genre(models.Model):
     movie = models.ForeignKey('Movie', on_delete=models.CASCADE, related_name='genres', null=True, blank=True)
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, db_index=True)
 
     def __str__(self):
         return self.name
@@ -19,7 +19,7 @@ class Genre(models.Model):
 
 class Language(models.Model):
     movie = models.ForeignKey('Movie', on_delete=models.CASCADE, related_name='languages', null=True, blank=True)
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, db_index=True)
 
     def __str__(self):
         return self.name
@@ -151,6 +151,13 @@ class Movie(models.Model):
 
     class Meta:
         ordering = ['-release_date']
+        indexes = [
+            models.Index(fields=['title']),
+            models.Index(fields=['status']),
+            models.Index(fields=['rating']),
+            models.Index(fields=['release_date']),
+            models.Index(fields=['title', 'status']),
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -180,8 +187,8 @@ class MovieImage(models.Model):
 # ---------------------------------------------------------------------------
 
 class Theater(models.Model):
-    name = models.CharField(max_length=255)
-    location = models.CharField(max_length=255, blank=True)
+    name = models.CharField(max_length=255, db_index=True)
+    location = models.CharField(max_length=255, blank=True, db_index=True)
     total_seats = models.PositiveIntegerField(default=0)
 
     # Legacy FK kept for existing views

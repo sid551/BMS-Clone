@@ -41,11 +41,11 @@ def login_view(request):
 
 @login_required
 def profile(request):
-    bookings = (
+    bookings_qs = (
         Booking.objects
         .filter(user=request.user)
         .select_related('movie', 'theater', 'show_schedule__movie', 'show_schedule__theater')
-        .prefetch_related('booked_seats__seat', 'payment')
+        .prefetch_related('booked_seats__seat')
         .order_by('-booked_at')
     )
 
@@ -55,6 +55,35 @@ def profile(request):
         .select_related('booking', 'show_schedule__movie', 'show_schedule__theater')
         .order_by('-created_at')
     )
+
+    # Pre-compute ticket URLs and seat lists in Python to avoid N+1 and slow Cloudinary calls in template
+    bookings = []
+    for booking in bookings_qs:
+        # Seat list
+        booked_seats = booking.booked_seats.all()
+        if booked_seats:
+            seat_str = ', '.join(bs.seat.seat_number for bs in booked_seats)
+        elif booking.seat_id:
+            seat_str = booking.seat.seat_number if booking.seat else str(booking.number_of_seats)
+        else:
+            seat_str = f'{booking.number_of_seats} seat{"s" if booking.number_of_seats != 1 else ""}'
+
+        # Ticket URL — only access if field has a name (avoids Cloudinary call)
+        ticket_url = None
+        has_ticket = bool(booking.ticket and booking.ticket.name)
+        if has_ticket:
+            try:
+                ticket_url = booking.ticket.url
+            except Exception:
+                ticket_url = None
+                has_ticket = False
+
+        bookings.append({
+            'obj': booking,
+            'seat_str': seat_str,
+            'has_ticket': has_ticket,
+            'ticket_url': ticket_url,
+        })
 
     if request.method == 'POST':
         u_form = UserUpdateForm(request.POST, instance=request.user)

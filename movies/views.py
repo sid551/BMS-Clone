@@ -12,7 +12,7 @@ from django.db.models import Q, Count
 from django.utils import timezone
 from .models import (
     Movie, MovieImage, Genre, Language, CastMember, Theater, Screen, Seat, ShowSeat, Booking,
-    ShowSchedule, BookingSeat, Review, ReportedReview
+    ShowSchedule, BookingSeat, Review, ReportedReview, Payment
 )
 from .forms import (
     ReviewForm, ReportReviewForm, MovieForm, GenreForm, LanguageForm,

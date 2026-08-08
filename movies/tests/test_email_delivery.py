@@ -122,6 +122,13 @@ class EmailDeliveryTestCase(TestCase):
             total_price=300.00,
             status='confirmed'
         )
+        # Ensure ticket PDF exists and reset email tracking for explicit task execution test
+        from movies.ticket_service import generate_and_save_ticket
+        generate_and_save_ticket(booking)
+        booking.email_status = 'pending'
+        booking.email_attempts = 0
+        booking.email_last_error = None
+        booking.save(update_fields=['email_status', 'email_attempts', 'email_last_error'])
 
         with patch('django.core.mail.EmailMultiAlternatives.send', side_effect=Exception('SMTP Connection Timeout')):
             # Execute task with retries disabled for direct failure test

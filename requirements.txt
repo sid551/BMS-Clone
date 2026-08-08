@@ -12,6 +12,6 @@ django-cloudinary-storage==0.3.0
 requests==2.31.0
 reportlab
 qrcode
-celery
+celery[redis]
 redis
-
+

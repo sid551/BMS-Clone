@@ -113,7 +113,7 @@ def generate_ticket_pdf(booking):
     # 1. Header Banner
     header_data = [
         [
-            Paragraph("<b>BookMyShow</b> Cinema Pass", title_style),
+            Paragraph("<b>MOVIE TICKET</b>", title_style),
             Paragraph(f"Ref: <b>{booking.booking_reference}</b>", ParagraphStyle('RefHeader', parent=subtitle_style, alignment=2))
         ]
     ]
@@ -137,14 +137,15 @@ def generate_ticket_pdf(booking):
     rating_str = f" | {movie.age_certification}" if (movie and movie.age_certification) else ""
     
     theater_name = theater.name if theater else "Theater"
-    theater_loc = f" ({theater.location})" if (theater and theater.location) else ""
     screen_name = screen.name if screen else "Screen 1"
     
     if booking.show_schedule and booking.show_schedule.show_time:
         show_time_dt = booking.show_schedule.show_time
-        show_time_str = show_time_dt.strftime("%A, %d %b %Y at %I:%M %p")
+        show_date_str = show_time_dt.strftime("%d %b %Y")
+        show_clock_str = show_time_dt.strftime("%I:%M %p")
     else:
-        show_time_str = booking.booked_at.strftime("%A, %d %b %Y at %I:%M %p")
+        show_date_str = booking.booked_at.strftime("%d %b %Y")
+        show_clock_str = booking.booked_at.strftime("%I:%M %p")
 
     # Fetch booked seat numbers
     booked_seats_qs = booking.booked_seats.select_related('seat').all()
@@ -207,27 +208,26 @@ def generate_ticket_pdf(booking):
     qr_buf = generate_qr_code_image(verify_url)
     qr_element = Image(qr_buf, width=110, height=110)
 
-
-    # Details table layout
+    # Details table layout matching spec
     details_data = [
-        [Paragraph(f"<b>{movie_title}</b>", movie_title_style), ""],
+        [Paragraph(f"<b>Movie:</b> {movie_title}", movie_title_style), ""],
         [Paragraph(f"<font color='#6B7280'>{duration_str}{rating_str}</font>", value_style), ""],
-        [Spacer(1, 4), ""],
-        [Paragraph("Theater & Screen", label_style), Paragraph(f"<b>{theater_name}</b>{theater_loc}<br/><font color='#4B5563'>{screen_name}</font>", value_style)],
-        [Paragraph("Show Date & Time", label_style), Paragraph(f"<b>{show_time_str}</b>", value_style)],
-        [Paragraph("Booked Seats", label_style), Paragraph(f"<b>{seat_numbers}</b> ({booking.number_of_seats} seat{'s' if booking.number_of_seats > 1 else ''})", value_style)],
-        [Paragraph("Payment Ref / Tx ID", label_style), Paragraph(f"<code>{payment_tx_id}</code>", value_style)],
-        [Paragraph("Total Amount", label_style), Paragraph(f"<b>₹{booking.total_price:,.2f}</b>", price_style)],
+        [Paragraph("Theater:", label_style), Paragraph(f"<b>{theater_name}</b>", value_style)],
+        [Paragraph("Screen:", label_style), Paragraph(f"<b>{screen_name}</b>", value_style)],
+        [Paragraph("Date:", label_style), Paragraph(f"<b>{show_date_str}</b>", value_style)],
+        [Paragraph("Time:", label_style), Paragraph(f"<b>{show_clock_str}</b>", value_style)],
+        [Paragraph("Seats:", label_style), Paragraph(f"<b>{seat_numbers}</b>", value_style)],
+        [Paragraph("Booking ID:", label_style), Paragraph(f"<b>{booking.booking_reference}</b>", value_style)],
+        [Paragraph("Payment Ref:", label_style), Paragraph(f"<code>{payment_tx_id}</code>", value_style)],
+        [Paragraph("Total Amount:", label_style), Paragraph(f"<b>₹{booking.total_price:,.2f}</b>", price_style)],
     ]
 
-    details_table = Table(details_data, colWidths=[130, 270])
+    details_table = Table(details_data, colWidths=[110, 290])
     details_table.setStyle(TableStyle([
         ('SPAN', (0, 0), (1, 0)),
         ('SPAN', (0, 1), (1, 1)),
-        ('SPAN', (0, 2), (1, 2)),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('PADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 3), (-1, -2), 4),
     ]))
 
     body_table = Table([
@@ -269,7 +269,7 @@ def generate_ticket_pdf(booking):
     elements.append(qr_table)
     elements.append(Spacer(1, 10))
 
-    elements.append(Paragraph("Thank you for booking with BookMyShow. Enjoy your movie!", small_note_style))
+    elements.append(Paragraph("Thank you for booking!", small_note_style))
 
     # Build PDF document
     doc.build(elements)

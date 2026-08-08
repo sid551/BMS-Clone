@@ -145,20 +145,48 @@ def send_ticket_email_task(self, booking_id):
     except Exception as e:
         logger.error(f'Failed to read ticket PDF for {booking.booking_reference}: {e}')
 
-    # 5. Dispatch via Brevo HTTP API (works on Vercel — no SMTP port needed)
+    # 5. Dispatch via Brevo HTTP API if key is present, else standard Django EmailMultiAlternatives
     from .brevo_service import send_email as brevo_send
 
     booking.email_attempts += 1
-    attachments = [pdf_attachment] if pdf_attachment else []
+    api_key = getattr(settings, 'BREVO_API_KEY', '')
 
-    success = brevo_send(
-        to_email=recipient_email,
-        to_name=booking.user.get_full_name() or booking.user.username,
-        subject=subject,
-        html_body=html_body,
-        text_body=text_body,
-        attachments=attachments,
-    )
+    success = False
+    mail_err_msg = None
+    if api_key:
+        attachments = [pdf_attachment] if pdf_attachment else []
+        success = brevo_send(
+            to_email=recipient_email,
+            to_name=booking.user.get_full_name() or booking.user.username,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+            attachments=attachments,
+        )
+        if not success:
+            mail_err_msg = 'Brevo API returned failure — see logs for details.'
+    else:
+        # Fallback to standard Django EmailMessage (works with locmem for tests, console/smtp for dev/prod)
+        try:
+            email_msg = EmailMultiAlternatives(
+                subject=subject,
+                body=text_body,
+                from_email=from_email,
+                to=[recipient_email],
+            )
+            email_msg.attach_alternative(html_body, "text/html")
+            if pdf_attachment:
+                email_msg.attach(
+                    pdf_attachment['name'],
+                    pdf_attachment['content'],
+                    pdf_attachment['type']
+                )
+            email_msg.send(fail_silently=False)
+            success = True
+        except Exception as mail_err:
+            logger.error(f"Django email dispatch failed for booking {booking.booking_reference}: {mail_err}")
+            mail_err_msg = str(mail_err)
+            success = False
 
     if success:
         booking.email_status = 'sent'
@@ -168,7 +196,7 @@ def send_ticket_email_task(self, booking_id):
         logger.info(f'Ticket email sent to {recipient_email} for booking {booking.booking_reference}')
         return True
     else:
-        err_msg = 'Brevo API returned failure — see logs for details.'
+        err_msg = mail_err_msg or 'Email dispatch failed — see logs for details.'
         booking.email_last_error = err_msg
 
         if self.request.retries >= self.max_retries:
@@ -180,3 +208,4 @@ def send_ticket_email_task(self, booking_id):
         booking.email_status = 'pending'
         booking.save(update_fields=['email_status', 'email_attempts', 'email_last_error', 'updated_at'])
         raise self.retry(exc=Exception(err_msg), countdown=30)
+

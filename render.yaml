@@ -1,0 +1,30 @@
+services:
+  - type: worker
+    name: bookmyshow-celery-worker
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A bookmyseat worker --loglevel=info --concurrency=2
+    rootDir: djnago-bookmyshow-clone
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: bookmyseat.settings
+      - key: CELERY_TASK_ALWAYS_EAGER
+        value: "False"
+      - key: DATABASE_URL
+        sync: false
+      - key: CELERY_BROKER_URL
+        sync: false
+      - key: CELERY_RESULT_BACKEND
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false

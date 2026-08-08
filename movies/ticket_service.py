@@ -333,20 +333,31 @@ def generate_and_save_ticket(booking):
 
     try:
         pdf_file = generate_ticket_pdf(booking)
-        raw_bytes = pdf_file.file.getvalue() if hasattr(pdf_file.file, 'getvalue') else pdf_file.read()
+        if hasattr(pdf_file, 'file') and hasattr(pdf_file.file, 'getvalue'):
+            raw_bytes = pdf_file.file.getvalue()
+        elif hasattr(pdf_file, 'read'):
+            raw_bytes = pdf_file.read()
+        else:
+            raw_bytes = bytes(pdf_file)
 
         filename = f"ticket_{booking.booking_reference}.pdf"
-        try:
-            booking.ticket.save(filename, pdf_file, save=False)
-            ticket_name = booking.ticket.name
-        except Exception:
-            ticket_name = f"tickets/{filename}"
+        ticket_name = f"tickets/{filename}"
 
-        # Update DB record with raw binary PDF data and ticket filename directly
+        # 1. Update DB record with raw binary PDF data FIRST (guarantees DB persistence)
         type(booking).objects.filter(pk=booking.pk).update(
             ticket_pdf_data=raw_bytes,
             ticket=ticket_name
         )
+
+        # 2. Save fresh ContentFile to file storage in an isolated try-except
+        try:
+            from django.core.files.base import ContentFile
+            fresh_file = ContentFile(raw_bytes, name=filename)
+            booking.ticket.save(filename, fresh_file, save=False)
+            type(booking).objects.filter(pk=booking.pk).update(ticket=booking.ticket.name)
+        except Exception as storage_err:
+            logger.warning(f"File storage save skipped for booking {booking.booking_reference}: {storage_err}")
+
         logger.info(f"Successfully generated and saved PDF ticket in DB for booking {booking.booking_reference}")
         return True
     except Exception as e:

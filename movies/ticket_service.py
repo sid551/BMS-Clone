@@ -324,7 +324,7 @@ def generate_ticket_pdf(booking):
 
 def generate_and_save_ticket(booking):
     """
-    Generate ticket PDF for confirmed booking and save it to DB (ticket_pdf_data) and file storage.
+    Generate ticket PDF for confirmed booking and save raw bytes directly to DB (ticket_pdf_data).
     Catches all exceptions to ensure already-confirmed booking status is never affected.
     """
     if booking.status != 'confirmed':
@@ -340,23 +340,27 @@ def generate_and_save_ticket(booking):
         else:
             raw_bytes = bytes(pdf_file)
 
-        filename = f"ticket_{booking.booking_reference}.pdf"
-        ticket_name = f"tickets/{filename}"
+        if not raw_bytes or not raw_bytes.startswith(b'%PDF-'):
+            logger.error(f"Generated PDF bytes invalid for booking {booking.booking_reference}")
+            return False
 
-        # 1. Update DB record with raw binary PDF data FIRST (guarantees DB persistence)
+        filename = f"ticket_{booking.booking_reference}.pdf"
+
+        # 1. Update DB record with raw binary PDF data FIRST
         type(booking).objects.filter(pk=booking.pk).update(
             ticket_pdf_data=raw_bytes,
-            ticket=ticket_name
         )
 
-        # 2. Save fresh ContentFile to file storage in an isolated try-except
+        # 2. Save to file storage if storage is available
         try:
             from django.core.files.base import ContentFile
             fresh_file = ContentFile(raw_bytes, name=filename)
-            booking.ticket.save(filename, fresh_file, save=False)
-            type(booking).objects.filter(pk=booking.pk).update(ticket=booking.ticket.name)
+            booking.ticket.save(filename, fresh_file, save=True)
         except Exception as storage_err:
             logger.warning(f"File storage save skipped for booking {booking.booking_reference}: {storage_err}")
+
+        # Update in-memory booking object attributes
+        booking.ticket_pdf_data = raw_bytes
 
         logger.info(f"Successfully generated and saved PDF ticket in DB for booking {booking.booking_reference}")
         return True

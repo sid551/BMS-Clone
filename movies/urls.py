@@ -21,6 +21,11 @@ urlpatterns = [
     path('payment/failed/', views.record_payment_failure_api, name='record_payment_failure_api'),
     path('payment/webhook/razorpay/', views.razorpay_webhook, name='razorpay_webhook'),
 
+    # Ticket PDF & Verification
+    path('booking/<str:booking_reference>/ticket/', views.download_ticket_pdf, name='download_ticket_pdf'),
+    path('booking/<str:booking_reference>/verify/', views.verify_ticket, name='verify_ticket'),
+
+
     # Custom Admin Management Routes
     path('manage/', views.admin_dashboard, name='admin_dashboard'),
     path('manage/export/csv/', views.admin_export_csv, name='admin_export_csv'),

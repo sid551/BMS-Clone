@@ -506,6 +506,21 @@ class Booking(models.Model):
     booked_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Generated Ticket PDF
+    ticket = models.FileField(upload_to='tickets/', null=True, blank=True, help_text='Generated PDF ticket')
+
+    # Email Delivery Tracking
+    EMAIL_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('sent', 'Sent'),
+        ('failed', 'Failed'),
+    ]
+    email_status = models.CharField(max_length=20, choices=EMAIL_STATUS_CHOICES, default='pending')
+    email_attempts = models.PositiveIntegerField(default=0)
+    email_last_error = models.TextField(blank=True, null=True)
+    email_sent_at = models.DateTimeField(blank=True, null=True)
+
+
     # Legacy fields kept for backward compatibility
     seat = models.ForeignKey(Seat, on_delete=models.SET_NULL, null=True, blank=True)
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE, null=True, blank=True)

@@ -1914,6 +1914,136 @@ def admin_toggle_seat_ajax(request):
     return JsonResponse({'success': False, 'error': 'Invalid request method.'}, status=400)
 
 
+from django.http import HttpResponse, Http404, HttpResponseForbidden
+from django.shortcuts import get_object_or_404, render
+from .ticket_service import generate_and_save_ticket
+
+
+@login_required(login_url='/login/')
+def download_ticket_pdf(request, booking_reference):
+    """
+    HTTP GET endpoint to view/download generated PDF ticket.
+    Generates ticket on-the-fly if missing.
+    """
+    booking = get_object_or_404(
+        Booking.objects.select_related('user', 'movie', 'theater', 'show_schedule__movie', 'show_schedule__theater', 'show_schedule__screen'),
+        booking_reference=booking_reference
+    )
+
+    # Permission check: owner or staff
+    if booking.user != request.user and not request.user.is_staff:
+        return HttpResponseForbidden("You do not have permission to view this ticket.")
+
+    if booking.status != 'confirmed':
+        return HttpResponse("Ticket is only available for confirmed bookings.", status=400)
+
+    # Auto-generate if missing
+    if not booking.ticket:
+        success = generate_and_save_ticket(booking)
+        if not success:
+            return HttpResponse("Failed to generate ticket PDF. Please try again later.", status=500)
+        booking.refresh_from_db()
+
+    try:
+        pdf_bytes = booking.ticket.read()
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        filename = f"ticket_{booking.booking_reference}.pdf"
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"Error reading ticket file: {str(e)}", status=500)
+
+
+def verify_ticket(request, booking_reference):
+    """
+    Server-side ticket verification endpoint that accepts a QR code ticket identifier.
+    Returns basic verification details (Movie, Theater, Screen, Show, Seats, Booking ID, Status).
+    Considers ticket valid ONLY when booking exists and status is confirmed/completed.
+    Supports both HTML UI rendering and JSON response format.
+    """
+    from django.http import JsonResponse
+
+    booking = Booking.objects.select_related(
+        'user', 'movie', 'theater',
+        'show_schedule__movie', 'show_schedule__theater', 'show_schedule__screen'
+    ).prefetch_related('booked_seats__seat').filter(booking_reference=booking_reference).first()
+
+    is_valid = bool(booking and booking.status in ['confirmed', 'completed'])
+
+    movie_title = "—"
+    theater_name = "—"
+    screen_name = "—"
+    show_time_str = "—"
+    seats_str = "—"
+    status_display = "Invalid"
+
+    if booking:
+        status_display = booking.get_status_display()
+        movie = booking.movie or (booking.show_schedule.movie if booking.show_schedule else None)
+        theater = booking.theater or (booking.show_schedule.theater if booking.show_schedule else None)
+        screen = booking.show_schedule.screen if (booking.show_schedule and booking.show_schedule.screen) else None
+
+        movie_title = movie.title if movie else "—"
+        theater_name = theater.name if theater else "—"
+        screen_name = screen.name if screen else "Screen 1"
+
+        if booking.show_schedule and booking.show_schedule.show_time:
+            show_time_str = booking.show_schedule.show_time.strftime("%I:%M %p (%d %b %Y)")
+        else:
+            show_time_str = booking.booked_at.strftime("%I:%M %p (%d %b %Y)")
+
+        booked_seats_qs = booking.booked_seats.all()
+        if booked_seats_qs.exists():
+            seats_str = ", ".join([bs.seat.seat_number for bs in booked_seats_qs])
+        elif booking.seat:
+            seats_str = booking.seat.seat_number
+        else:
+            seats_str = f"{booking.number_of_seats} seat(s)"
+
+    # Handle JSON API request format
+    wants_json = request.GET.get('format') == 'json' or request.headers.get('Accept') == 'application/json'
+    if wants_json:
+        if is_valid:
+            return JsonResponse({
+                'valid': True,
+                'booking_id': booking.booking_reference,
+                'movie': movie_title,
+                'theater': theater_name,
+                'screen': screen_name,
+                'show_time': show_time_str,
+                'seats': seats_str,
+                'status': status_display,
+            })
+        else:
+            return JsonResponse({
+                'valid': False,
+                'booking_id': booking_reference,
+                'status': status_display,
+                'error': 'Invalid, cancelled, or non-existent ticket identifier.',
+            }, status=400)
+
+    payment = None
+    if booking:
+        from .models import Payment
+        payment = Payment.objects.filter(booking=booking, status='success').first()
+
+    context = {
+        'booking': booking,
+        'is_valid': is_valid,
+        'payment': payment,
+        'booking_reference': booking_reference,
+        'movie_title': movie_title,
+        'theater_name': theater_name,
+        'screen_name': screen_name,
+        'show_time_str': show_time_str,
+        'seats_str': seats_str,
+        'status_display': status_display,
+    }
+    return render(request, 'movies/ticket_verify.html', context)
+
+
+
+
 
 
 

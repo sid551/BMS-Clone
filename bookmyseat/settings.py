@@ -151,7 +151,13 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', ''),
 }
 MEDIA_URL = '/media/'
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+if os.environ.get('CLOUDINARY_CLOUD_NAME'):
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+else:
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -163,3 +169,41 @@ RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_TGC8nqUhxruhge')
 RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '6bVYVwV5jpiMa0FRH7xT0QPV')
 RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET', 'BmsWebHook')
 RAZORPAY_CURRENCY = 'INR'
+
+# Celery Configuration
+# If no Redis broker is configured (e.g. Vercel serverless), run tasks eagerly in-process
+_broker_url = os.environ.get('CELERY_BROKER_URL', '')
+if _broker_url:
+    CELERY_BROKER_URL = _broker_url
+    CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', _broker_url)
+    CELERY_TASK_ALWAYS_EAGER = False
+else:
+    # No broker available — run synchronously (Vercel / local without Redis)
+    CELERY_BROKER_URL = 'memory://'
+    CELERY_RESULT_BACKEND = 'cache+memory://'
+    CELERY_TASK_ALWAYS_EAGER = True
+
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_EAGER_PROPAGATES = False  # email failures don't crash the request
+
+# Email Configuration
+# Use SMTP when credentials are set, otherwise log to console
+_email_host = os.environ.get('EMAIL_HOST', '')
+if _email_host:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = _email_host
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'tickets@bookmyshow.com')
+
+# Brevo (Sendinblue) transactional email via HTTP API
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
+

@@ -1,0 +1,90 @@
+{% extends "users/basic.html" %}
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card shadow-lg border-0 rounded-lg overflow-hidden">
+        
+        {% if is_valid %}
+          <div class="card-header bg-success text-white py-4 text-center">
+            <i class="fas fa-check-circle fa-3x mb-2"></i>
+            <h2 class="font-weight-bold mb-0">&check; VALID TICKET</h2>
+            <p class="mb-0 text-white-50">Secure Verification Passed</p>
+          </div>
+          <div class="card-body p-4">
+            <div class="list-group list-group-flush border rounded mb-4">
+              <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <span class="text-muted font-weight-bold"><i class="fas fa-film mr-2 text-primary"></i>Movie</span>
+                <span class="font-weight-bold text-dark h5 mb-0">{{ movie_title }}</span>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <span class="text-muted font-weight-bold"><i class="fas fa-building mr-2 text-danger"></i>Theater</span>
+                <span class="font-weight-bold text-dark">{{ theater_name }}</span>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <span class="text-muted font-weight-bold"><i class="fas fa-tv mr-2 text-info"></i>Screen</span>
+                <span class="font-weight-bold text-dark">{{ screen_name }}</span>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <span class="text-muted font-weight-bold"><i class="fas fa-clock mr-2 text-warning"></i>Show</span>
+                <span class="font-weight-bold text-dark">{{ show_time_str }}</span>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <span class="text-muted font-weight-bold"><i class="fas fa-chair mr-2 text-success"></i>Seats</span>
+                <span class="font-weight-bold text-danger h6 mb-0">{{ seats_str }}</span>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <span class="text-muted font-weight-bold"><i class="fas fa-hashtag mr-2 text-secondary"></i>Booking ID</span>
+                <code class="font-weight-bold text-dark h6 mb-0">{{ booking.booking_reference }}</code>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <span class="text-muted font-weight-bold"><i class="fas fa-check-double mr-2 text-success"></i>Status</span>
+                <span class="badge badge-success px-3 py-2 font-weight-bold">{{ status_display }}</span>
+              </div>
+            </div>
+
+            {% if user.is_authenticated and user == booking.user or user.is_staff %}
+            <div class="text-center">
+              <a href="{% url 'download_ticket_pdf' booking.booking_reference %}" target="_blank" class="btn btn-danger rounded-pill px-4 shadow-sm">
+                <i class="fas fa-file-pdf mr-2"></i> Download Official Ticket PDF
+              </a>
+            </div>
+            {% endif %}
+          </div>
+        {% else %}
+          <div class="card-header bg-danger text-white py-4 text-center">
+            <i class="fas fa-times-circle fa-3x mb-2"></i>
+            <h2 class="font-weight-bold mb-0">&cross; INVALID TICKET</h2>
+            <p class="mb-0 text-white-50">Ticket Verification Failed</p>
+          </div>
+          <div class="card-body p-4 text-center">
+            <div class="alert alert-danger mb-4" role="alert">
+              <i class="fas fa-exclamation-triangle mr-2"></i>
+              This ticket identifier is invalid, cancelled, refunded, or does not exist in the system.
+            </div>
+
+            <div class="list-group list-group-flush border rounded mb-4 text-left">
+              <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <span class="text-muted font-weight-bold">Booking ID</span>
+                <code class="text-dark font-weight-bold">{{ booking_reference }}</code>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <span class="text-muted font-weight-bold">Verification Status</span>
+                <span class="badge badge-danger px-3 py-2 font-weight-bold">Invalid / Non-Confirmed</span>
+              </div>
+            </div>
+
+            <a href="{% url 'movie_list' %}" class="btn btn-outline-primary rounded-pill px-4">
+              <i class="fas fa-home mr-2"></i> Return to Homepage
+            </a>
+          </div>
+        {% endif %}
+
+        <div class="card-footer bg-light text-center py-3 text-muted small">
+          BookMyShow Official Ticket Verification Portal &bull; System Time: {% now "Y-m-d H:i" %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

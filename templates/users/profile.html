@@ -84,7 +84,8 @@
                   </td>
                   <td>
                     {% if booking.booked_seats.all %}
-                    {% for bs in booking.booked_seats.all %}{{ bs.seat.seat_number }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    {% for bs in booking.booked_seats.all %}{{ bs.seat.seat_number }}{% if not forloop.last %}, {% endif
+                    %}{% endfor %}
                     {% elif booking.seat %}{{ booking.seat.seat_number }}
                     {% else %}{{ booking.number_of_seats }} seat{{ booking.number_of_seats|pluralize }}{% endif %}
                   </td>
@@ -97,20 +98,33 @@
                   </td>
                   <td>
                     {% if booking.status == 'confirmed' %}
-                      <a href="{% url 'download_ticket_pdf' booking.booking_reference %}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm">
-                        <i class="fas fa-file-pdf mr-1"></i> PDF
-                      </a>
+                    {% if booking.ticket %}
+                    <a href="{% url 'download_ticket_pdf' booking.booking_reference %}" target="_blank"
+                      class="btn btn-sm btn-danger">
+                      <i class="fas fa-download mr-1"></i> Download
+                    </a>
                     {% else %}
-                      <span class="text-muted">—</span>
+                    <span class="badge badge-warning" title="Ticket is being generated">
+                      <i class="fas fa-spinner mr-1"></i> Generating
+                    </span>
+                    {% endif %}
+                    {% elif booking.status == 'pending' %}
+                    <span class="text-muted small">Awaiting payment</span>
+                    {% elif booking.status == 'cancelled' %}
+                    <span class="text-muted small">Cancelled</span>
+                    {% else %}
+                    <span class="text-muted">—</span>
                     {% endif %}
                   </td>
                   <td>
                     {% if booking.email_status == 'sent' %}
-                      <span class="badge badge-success" title="Sent at {{ booking.email_sent_at|date:'M d, h:i A' }}"><i class="fas fa-paper-plane mr-1"></i> Sent</span>
+                    <span class="badge badge-success" title="Sent at {{ booking.email_sent_at|date:'M d, h:i A' }}"><i
+                        class="fas fa-paper-plane mr-1"></i> Sent</span>
                     {% elif booking.email_status == 'failed' %}
-                      <span class="badge badge-danger" title="{{ booking.email_last_error }}"><i class="fas fa-exclamation-triangle mr-1"></i> Failed</span>
+                    <span class="badge badge-danger" title="{{ booking.email_last_error }}"><i
+                        class="fas fa-exclamation-triangle mr-1"></i> Failed</span>
                     {% else %}
-                      <span class="badge badge-light text-dark"><i class="fas fa-clock mr-1"></i> Pending</span>
+                    <span class="badge badge-light text-dark"><i class="fas fa-clock mr-1"></i> Pending</span>
                     {% endif %}
                   </td>
 

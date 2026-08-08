@@ -508,6 +508,7 @@ class Booking(models.Model):
 
     # Generated Ticket PDF
     ticket = models.FileField(upload_to='tickets/', null=True, blank=True, help_text='Generated PDF ticket')
+    ticket_pdf_data = models.BinaryField(null=True, blank=True, help_text='Raw PDF ticket bytes stored directly in DB for cloud persistence')
 
     # Email Delivery Tracking
     EMAIL_STATUS_CHOICES = [

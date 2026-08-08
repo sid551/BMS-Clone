@@ -47,8 +47,10 @@ def send_ticket_email_task(self, booking_id):
         booking.save(update_fields=['email_attempts', 'email_last_error', 'email_status', 'updated_at'])
         return False
 
-    # 2. Ensure Ticket PDF is generated
-    if not booking.ticket:
+    # 2. Ensure Ticket PDF is available (checks DB binary field ticket_pdf_data first)
+    from .ticket_service import get_booking_ticket_bytes
+    pdf_bytes = get_booking_ticket_bytes(booking)
+    if not pdf_bytes or not pdf_bytes.startswith(b'%PDF-'):
         logger.info(f"Ticket PDF missing for booking {booking.booking_reference}. Generating on-the-fly...")
         success = generate_and_save_ticket(booking)
         if not success:

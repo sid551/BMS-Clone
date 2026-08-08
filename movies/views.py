@@ -1922,15 +1922,15 @@ from .ticket_service import generate_and_save_ticket
 @login_required(login_url='/login/')
 def download_ticket_pdf(request, booking_reference):
     """
-    HTTP GET endpoint to view/download generated PDF ticket.
-    Generates ticket on-the-fly if missing.
+    Serve the PDF ticket. For Cloudinary-stored tickets, redirect to the Cloudinary URL.
+    For local storage, stream the bytes directly.
+    Auto-generates the ticket if missing.
     """
     booking = get_object_or_404(
         Booking.objects.select_related('user', 'movie', 'theater', 'show_schedule__movie', 'show_schedule__theater', 'show_schedule__screen'),
         booking_reference=booking_reference
     )
 
-    # Permission check: owner or staff
     if booking.user != request.user and not request.user.is_staff:
         return HttpResponseForbidden("You do not have permission to view this ticket.")
 
@@ -1938,20 +1938,29 @@ def download_ticket_pdf(request, booking_reference):
         return HttpResponse("Ticket is only available for confirmed bookings.", status=400)
 
     # Auto-generate if missing
-    if not booking.ticket:
+    if not booking.ticket or not booking.ticket.name:
+        from .ticket_service import generate_and_save_ticket
         success = generate_and_save_ticket(booking)
         if not success:
-            return HttpResponse("Failed to generate ticket PDF. Please try again later.", status=500)
+            return HttpResponse("Ticket is still being generated. Please try again in a moment.", status=503)
         booking.refresh_from_db()
 
     try:
+        # Cloudinary stores files remotely — redirect to the URL directly
+        # This avoids trying to .read() a remote file which causes 500
+        ticket_url = booking.ticket.url
+        if 'cloudinary.com' in ticket_url or 'res.cloudinary' in ticket_url:
+            from django.http import HttpResponseRedirect
+            return HttpResponseRedirect(ticket_url)
+
+        # Local storage — stream bytes
         pdf_bytes = booking.ticket.read()
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         filename = f"ticket_{booking.booking_reference}.pdf"
-        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     except Exception as e:
-        return HttpResponse(f"Error reading ticket file: {str(e)}", status=500)
+        return HttpResponse(f"Error serving ticket: {str(e)}", status=500)
 
 
 def verify_ticket(request, booking_reference):

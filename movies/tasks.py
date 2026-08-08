@@ -157,7 +157,7 @@ def send_ticket_email_task(self, booking_id):
     mail_err_msg = None
     if api_key:
         attachments = [pdf_attachment] if pdf_attachment else []
-        success = brevo_send(
+        success, mail_err_msg = brevo_send(
             to_email=recipient_email,
             to_name=booking.user.get_full_name() or booking.user.username,
             subject=subject,
@@ -165,8 +165,6 @@ def send_ticket_email_task(self, booking_id):
             text_body=text_body,
             attachments=attachments,
         )
-        if not success:
-            mail_err_msg = 'Brevo API returned failure — see logs for details.'
     else:
         # Fallback to standard Django EmailMessage (works with locmem for tests, console/smtp for dev/prod)
         try:

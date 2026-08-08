@@ -24,6 +24,7 @@ urlpatterns = [
     # Ticket PDF & Verification
     path('booking/<str:booking_reference>/ticket/', views.download_ticket_pdf, name='download_ticket_pdf'),
     path('booking/<str:booking_reference>/verify/', views.verify_ticket, name='verify_ticket'),
+    path('booking/<str:booking_reference>/resend-email/', views.resend_booking_email, name='resend_booking_email'),
 
 
     # Custom Admin Management Routes

@@ -113,9 +113,17 @@
                     {% if b.email_status == 'sent' %}
                     <span class="badge badge-success"><i class="fas fa-paper-plane mr-1"></i> Sent</span>
                     {% elif b.email_status == 'failed' %}
-                    <span class="badge badge-danger"><i class="fas fa-exclamation-triangle mr-1"></i> Failed</span>
+                    <span class="badge badge-danger" title="{{ b.email_last_error|default:'Delivery failed' }}"><i class="fas fa-exclamation-triangle mr-1"></i> Failed</span>
+                    <a href="{% url 'resend_booking_email' b.booking_reference %}" class="btn btn-xs btn-outline-danger ml-1" title="Resend Email">
+                      <i class="fas fa-redo"></i>
+                    </a>
                     {% else %}
                     <span class="badge badge-light text-dark"><i class="fas fa-clock mr-1"></i> Pending</span>
+                    {% if b.status == 'confirmed' %}
+                    <a href="{% url 'resend_booking_email' b.booking_reference %}" class="btn btn-xs btn-outline-secondary ml-1" title="Send Email Now">
+                      <i class="fas fa-paper-plane"></i>
+                    </a>
+                    {% endif %}
                     {% endif %}
                   </td>
                 </tr>

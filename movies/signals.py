@@ -26,7 +26,7 @@ def auto_generate_ticket_and_email_on_confirmation(sender, instance, created, **
         if not instance.ticket:
             generate_and_save_ticket(instance)
 
-        # Step 2: Dispatch Celery background task if email hasn't been processed yet
+        # Step 2: Dispatch background email task if email hasn't been processed yet
         if instance.email_status == 'pending' and instance.email_attempts == 0:
             try:
                 from .tasks import send_ticket_email_task
@@ -34,8 +34,12 @@ def auto_generate_ticket_and_email_on_confirmation(sender, instance, created, **
                 if getattr(settings, 'CELERY_TASK_ALWAYS_EAGER', False):
                     send_ticket_email_task(instance.id)
                 else:
-                    send_ticket_email_task.delay(instance.id)
-                logger.info(f"Dispatched Celery email task for booking {instance.booking_reference}")
+                    try:
+                        send_ticket_email_task.delay(instance.id)
+                    except Exception as celery_err:
+                        logger.warning(f"Celery delay failed for booking {instance.booking_reference}, falling back to synchronous delivery: {celery_err}")
+                        send_ticket_email_task(instance.id)
+                logger.info(f"Dispatched email task for booking {instance.booking_reference}")
             except Exception as e:
-                # Log error if Celery broker dispatch fails without interrupting HTTP response/booking
-                logger.error(f"Failed to dispatch Celery email task for booking {instance.booking_reference}: {e}", exc_info=True)
+                # Log error if dispatch fails without interrupting HTTP response/booking
+                logger.error(f"Failed to dispatch email task for booking {instance.booking_reference}: {e}", exc_info=True)

@@ -2043,6 +2043,36 @@ def verify_ticket(request, booking_reference):
     return render(request, 'movies/ticket_verify.html', context)
 
 
+@login_required(login_url='/login/')
+def resend_booking_email(request, booking_reference):
+    """
+    User/Admin endpoint to manually trigger or retry sending ticket confirmation email.
+    """
+    booking = get_object_or_404(Booking, booking_reference=booking_reference)
+    if booking.user != request.user and not request.user.is_staff:
+        return HttpResponseForbidden("You do not have permission to resend this ticket email.")
+
+    if booking.status != 'confirmed':
+        messages.error(request, "Ticket emails can only be sent for confirmed bookings.")
+        return redirect('profile')
+
+    from .tasks import send_ticket_email_task
+    # Reset tracking status to allow email dispatch attempt
+    booking.email_status = 'pending'
+    booking.save(update_fields=['email_status'])
+
+    success = send_ticket_email_task(booking.id)
+    booking.refresh_from_db()
+
+    if success or booking.email_status == 'sent':
+        messages.success(request, f"Ticket email successfully sent to {booking.user.email}!")
+    else:
+        err = booking.email_last_error or "Unknown error"
+        messages.error(request, f"Failed to send ticket email: {err}")
+
+    return redirect('profile')
+
+
 
 
 

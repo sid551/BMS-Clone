@@ -171,14 +171,16 @@ RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET', 'BmsWebHook'
 RAZORPAY_CURRENCY = 'INR'
 
 # Celery Configuration
-# If no Redis broker is configured (e.g. Vercel serverless), run tasks eagerly in-process
+# If running on Vercel serverless or if no dedicated Celery worker broker is configured,
+# execute tasks eagerly in-process so background emails send immediately.
 _broker_url = os.environ.get('CELERY_BROKER_URL', '')
-if _broker_url:
+_is_vercel = os.environ.get('VERCEL') == '1' or os.environ.get('VERCEL_ENV') is not None
+if _broker_url and not _is_vercel:
     CELERY_BROKER_URL = _broker_url
     CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', _broker_url)
     CELERY_TASK_ALWAYS_EAGER = False
 else:
-    # No broker available — run synchronously (Vercel / local without Redis)
+    # Synchronous execution (Vercel serverless / local dev without Redis daemon)
     CELERY_BROKER_URL = 'memory://'
     CELERY_RESULT_BACKEND = 'cache+memory://'
     CELERY_TASK_ALWAYS_EAGER = True

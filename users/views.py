@@ -68,6 +68,15 @@ def profile(request):
         else:
             seat_str = f'{booking.number_of_seats} seat{"s" if booking.number_of_seats != 1 else ""}'
 
+        # Auto-trigger ticket email dispatch if booking is confirmed and email remains pending
+        if booking.status == 'confirmed' and booking.email_status == 'pending' and booking.email_attempts == 0:
+            try:
+                from movies.tasks import send_ticket_email_task
+                send_ticket_email_task(booking.id)
+                booking.refresh_from_db()
+            except Exception:
+                pass
+
         # Ticket URL — only access if field has a name (avoids Cloudinary call)
         ticket_url = None
         has_ticket = bool(booking.ticket and booking.ticket.name)

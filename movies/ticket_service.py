@@ -171,26 +171,55 @@ def generate_ticket_pdf(booking):
     # 2. Main Content Grid (Poster on Left if available, Details on Right)
     poster_element = None
     if movie and (movie.poster or movie.image):
-        try:
-            image_field = movie.poster or movie.image
-            if hasattr(image_field, 'path') and image_field.storage.exists(image_field.name):
-                img_path = image_field.path
-                with PILImage.open(img_path) as pil_img:
+        image_field = movie.poster or movie.image
+        img_bytes = None
+
+        # Attempt 1: Local file path
+        if hasattr(image_field, 'path'):
+            try:
+                if image_field.storage.exists(image_field.name):
+                    with open(image_field.path, 'rb') as f:
+                        img_bytes = f.read()
+            except Exception:
+                img_bytes = None
+
+        # Attempt 2: Storage open
+        if not img_bytes:
+            try:
+                image_field.open('rb')
+                img_bytes = image_field.read()
+                image_field.close()
+            except Exception:
+                img_bytes = None
+
+        # Attempt 3: Remote HTTP fetch for Cloudinary or external image URLs
+        if not img_bytes and hasattr(image_field, 'url') and image_field.url:
+            try:
+                import urllib.request
+                url = image_field.url
+                if url.startswith('//'):
+                    url = 'https:' + url
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    if resp.status == 200:
+                        img_bytes = resp.read()
+            except Exception as e:
+                logger.warning(f"Could not fetch movie poster URL '{image_field.url}' via HTTP: {e}")
+                img_bytes = None
+
+        # Convert image bytes to PIL Image for ReportLab
+        if img_bytes:
+            try:
+                p_buf_in = io.BytesIO(img_bytes)
+                with PILImage.open(p_buf_in) as pil_img:
                     pil_img = pil_img.convert('RGB')
-                    p_buf = io.BytesIO()
-                    pil_img.save(p_buf, format='JPEG', quality=85)
-                    p_buf.seek(0)
-                    poster_element = Image(p_buf, width=110, height=155)
-            elif hasattr(image_field, 'file'):
-                with PILImage.open(image_field.file) as pil_img:
-                    pil_img = pil_img.convert('RGB')
-                    p_buf = io.BytesIO()
-                    pil_img.save(p_buf, format='JPEG', quality=85)
-                    p_buf.seek(0)
-                    poster_element = Image(p_buf, width=110, height=155)
-        except Exception as e:
-            logger.warning(f"Could not load poster for ticket PDF: {e}")
-            poster_element = None
+                    p_buf_out = io.BytesIO()
+                    pil_img.save(p_buf_out, format='JPEG', quality=85)
+                    p_buf_out.seek(0)
+                    poster_element = Image(p_buf_out, width=110, height=155)
+            except Exception as e:
+                logger.warning(f"Could not process poster image bytes for PDF: {e}")
+                poster_element = None
 
     if not poster_element:
         # Placeholder poster box

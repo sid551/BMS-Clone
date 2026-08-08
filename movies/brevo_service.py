@@ -21,12 +21,13 @@ def send_email(to_email, to_name, subject, html_body, text_body, attachments=Non
         - content: bytes
         - type: MIME type (e.g. 'application/pdf')
 
-    Returns True on success, False on failure.
+    Returns (True, None) on success, (False, error_message) on failure.
     """
     api_key = getattr(settings, 'BREVO_API_KEY', '')
     if not api_key:
-        logger.warning('BREVO_API_KEY not set — email not sent.')
-        return False
+        err_msg = 'BREVO_API_KEY environment variable is not configured.'
+        logger.warning(err_msg)
+        return False, err_msg
 
     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'tickets@bookmyshow.com')
     # Parse "Name <email>" format if present
@@ -68,10 +69,12 @@ def send_email(to_email, to_name, subject, html_body, text_body, attachments=Non
         )
         if resp.status_code in (200, 201):
             logger.info(f'Brevo email sent to {to_email} — subject: {subject}')
-            return True
+            return True, None
         else:
-            logger.error(f'Brevo API error {resp.status_code}: {resp.text}')
-            return False
+            err_msg = f'Brevo API HTTP {resp.status_code}: {resp.text}'
+            logger.error(err_msg)
+            return False, err_msg
     except requests.exceptions.RequestException as e:
-        logger.error(f'Brevo request failed: {e}')
-        return False
+        err_msg = f'Brevo HTTP request failed: {e}'
+        logger.error(err_msg)
+        return False, err_msg

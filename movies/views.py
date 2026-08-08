@@ -1,8 +1,11 @@
+import logging
 from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse
+
+logger = logging.getLogger(__name__)
 
 
 from django.contrib import messages
@@ -1922,9 +1925,9 @@ from .ticket_service import generate_and_save_ticket
 @login_required(login_url='/login/')
 def download_ticket_pdf(request, booking_reference):
     """
-    Serve the PDF ticket. For Cloudinary-stored tickets, redirect to the Cloudinary URL.
-    For local storage, stream the bytes directly.
-    Auto-generates the ticket if missing.
+    Serve the PDF ticket directly with application/pdf headers.
+    Streams PDF bytes directly (using stored ticket or generating on-the-fly)
+    to prevent broken Cloudinary 302 redirects and ensure clean downloads.
     """
     booking = get_object_or_404(
         Booking.objects.select_related('user', 'movie', 'theater', 'show_schedule__movie', 'show_schedule__theater', 'show_schedule__screen'),
@@ -1937,29 +1940,18 @@ def download_ticket_pdf(request, booking_reference):
     if booking.status != 'confirmed':
         return HttpResponse("Ticket is only available for confirmed bookings.", status=400)
 
-    # Auto-generate if missing
-    if not booking.ticket or not booking.ticket.name:
-        from .ticket_service import generate_and_save_ticket
-        success = generate_and_save_ticket(booking)
-        if not success:
-            return HttpResponse("Ticket is still being generated. Please try again in a moment.", status=503)
-        booking.refresh_from_db()
-
     try:
-        # Cloudinary stores files remotely — redirect to the URL directly
-        # This avoids trying to .read() a remote file which causes 500
-        ticket_url = booking.ticket.url
-        if 'cloudinary.com' in ticket_url or 'res.cloudinary' in ticket_url:
-            from django.http import HttpResponseRedirect
-            return HttpResponseRedirect(ticket_url)
+        from .ticket_service import get_booking_ticket_bytes
+        pdf_bytes = get_booking_ticket_bytes(booking)
+        if not pdf_bytes:
+            return HttpResponse("Ticket generation failed. Please try again in a moment.", status=503)
 
-        # Local storage — stream bytes
-        pdf_bytes = booking.ticket.read()
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         filename = f"ticket_{booking.booking_reference}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     except Exception as e:
+        logger.error(f"Error serving ticket PDF for {booking_reference}: {e}", exc_info=True)
         return HttpResponse(f"Error serving ticket: {str(e)}", status=500)
 
 

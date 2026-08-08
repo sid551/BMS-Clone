@@ -136,14 +136,16 @@ def send_ticket_email_task(self, booking_id):
     # 4. Build PDF attachment
     pdf_attachment = None
     try:
-        pdf_bytes = booking.ticket.read()
-        pdf_attachment = {
-            'name': f'ticket_{booking.booking_reference}.pdf',
-            'content': pdf_bytes,
-            'type': 'application/pdf',
-        }
+        from .ticket_service import get_booking_ticket_bytes
+        pdf_bytes = get_booking_ticket_bytes(booking)
+        if pdf_bytes:
+            pdf_attachment = {
+                'name': f'ticket_{booking.booking_reference}.pdf',
+                'content': pdf_bytes,
+                'type': 'application/pdf',
+            }
     except Exception as e:
-        logger.error(f'Failed to read ticket PDF for {booking.booking_reference}: {e}')
+        logger.error(f'Failed to get ticket PDF for {booking.booking_reference}: {e}')
 
     # 5. Dispatch via Brevo HTTP API if key is present, else standard Django EmailMultiAlternatives
     from .brevo_service import send_email as brevo_send

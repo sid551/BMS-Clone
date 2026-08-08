@@ -300,3 +300,55 @@ def generate_and_save_ticket(booking):
             exc_info=True
         )
         return False
+
+
+def get_booking_ticket_bytes(booking):
+    """
+    Retrieve raw PDF bytes for a confirmed booking ticket.
+    Attempts:
+    1. Read directly from booking.ticket if stored locally/remotely.
+    2. HTTP fetch from booking.ticket.url if direct file read fails on remote storage (Cloudinary).
+    3. Re-generate PDF on-the-fly via ReportLab generate_ticket_pdf(booking) if missing or unreadable.
+
+    Ensures PDF bytes are ALWAYS available for downloads and email attachments.
+    """
+    pdf_bytes = None
+
+    # Attempt 1: Read directly from booking.ticket FileField
+    if booking.ticket and booking.ticket.name:
+        try:
+            booking.ticket.open('rb')
+            pdf_bytes = booking.ticket.read()
+            booking.ticket.close()
+        except Exception as e:
+            logger.warning(f"Could not read booking.ticket file directly for {booking.booking_reference}: {e}")
+            pdf_bytes = None
+
+        # Attempt 2: If direct read failed (e.g. Cloudinary remote storage), fetch via HTTP from ticket.url
+        if not pdf_bytes and hasattr(booking.ticket, 'url'):
+            try:
+                import urllib.request
+                req = urllib.request.Request(
+                    booking.ticket.url,
+                    headers={'User-Agent': 'Mozilla/5.0'}
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    if resp.status == 200:
+                        pdf_bytes = resp.read()
+            except Exception as e:
+                logger.warning(f"Could not fetch ticket URL '{booking.ticket.url}' via HTTP for {booking.booking_reference}: {e}")
+                pdf_bytes = None
+
+    # Attempt 3: On-the-fly generation if stored file is missing or unreadable
+    if not pdf_bytes:
+        try:
+            content_file = generate_ticket_pdf(booking)
+            pdf_bytes = content_file.read()
+            # Attempt background save if missing
+            if not booking.ticket or not booking.ticket.name:
+                generate_and_save_ticket(booking)
+        except Exception as e:
+            logger.error(f"Failed to generate ticket PDF on-the-fly for {booking.booking_reference}: {e}", exc_info=True)
+
+    return pdf_bytes
+

@@ -50,11 +50,25 @@ def send_email(to_email, to_name, subject, html_body, text_body, attachments=Non
     if attachments:
         payload['attachment'] = []
         for att in attachments:
-            encoded = base64.b64encode(att['content']).decode('utf-8')
-            payload['attachment'].append({
-                'name': att['name'],
-                'content': encoded,
-            })
+            content_data = att.get('content')
+            if hasattr(content_data, 'file') and hasattr(content_data.file, 'getvalue'):
+                content_data = content_data.file.getvalue()
+            elif hasattr(content_data, 'read'):
+                content_data = content_data.read()
+            elif hasattr(content_data, 'getvalue'):
+                content_data = content_data.getvalue()
+
+            if isinstance(content_data, str):
+                content_data = content_data.encode('utf-8')
+
+            if content_data and len(content_data) > 50:
+                encoded = base64.b64encode(content_data).decode('utf-8')
+                payload['attachment'].append({
+                    'name': att['name'],
+                    'content': encoded,
+                })
+            else:
+                logger.warning(f"Skipping empty or corrupted email attachment: {att.get('name')}")
 
     try:
         resp = requests.post(

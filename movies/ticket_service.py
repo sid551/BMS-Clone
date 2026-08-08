@@ -337,9 +337,9 @@ def get_booking_ticket_bytes(booking):
     Attempts:
     1. Read directly from booking.ticket if stored locally/remotely.
     2. HTTP fetch from booking.ticket.url if direct file read fails on remote storage (Cloudinary).
-    3. Re-generate PDF on-the-fly via ReportLab generate_ticket_pdf(booking) if missing or unreadable.
+    3. Re-generate PDF on-the-fly via ReportLab generate_ticket_pdf(booking) if missing, unreadable, or invalid PDF header.
 
-    Ensures PDF bytes are ALWAYS available for downloads and email attachments.
+    Ensures PDF bytes are ALWAYS valid %PDF- bytes for downloads and email attachments.
     """
     pdf_bytes = None
 
@@ -353,31 +353,51 @@ def get_booking_ticket_bytes(booking):
             logger.warning(f"Could not read booking.ticket file directly for {booking.booking_reference}: {e}")
             pdf_bytes = None
 
-        # Attempt 2: If direct read failed (e.g. Cloudinary remote storage), fetch via HTTP from ticket.url
-        if not pdf_bytes and hasattr(booking.ticket, 'url'):
-            try:
-                import urllib.request
-                req = urllib.request.Request(
-                    booking.ticket.url,
-                    headers={'User-Agent': 'Mozilla/5.0'}
-                )
-                with urllib.request.urlopen(req, timeout=10) as resp:
-                    if resp.status == 200:
-                        pdf_bytes = resp.read()
-            except Exception as e:
-                logger.warning(f"Could not fetch ticket URL '{booking.ticket.url}' via HTTP for {booking.booking_reference}: {e}")
-                pdf_bytes = None
+        # Validate Attempt 1 bytes
+        if pdf_bytes and not pdf_bytes.startswith(b'%PDF-'):
+            logger.warning(f"Direct read for {booking.booking_reference} produced non-PDF bytes ({len(pdf_bytes)} bytes). Resetting...")
+            pdf_bytes = None
 
-    # Attempt 3: On-the-fly generation if stored file is missing or unreadable
-    if not pdf_bytes:
+        # Attempt 2: If direct read failed or invalid, try fetching via HTTP from ticket.url if absolute URL
+        if not pdf_bytes and hasattr(booking.ticket, 'url') and booking.ticket.url:
+            ticket_url = booking.ticket.url
+            if ticket_url.startswith(('http://', 'https://', '//')):
+                if ticket_url.startswith('//'):
+                    ticket_url = 'https:' + ticket_url
+                try:
+                    import urllib.request
+                    req = urllib.request.Request(
+                        ticket_url,
+                        headers={'User-Agent': 'Mozilla/5.0'}
+                    )
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        if resp.status == 200:
+                            fetched_bytes = resp.read()
+                            if fetched_bytes and fetched_bytes.startswith(b'%PDF-'):
+                                pdf_bytes = fetched_bytes
+                            else:
+                                logger.warning(f"Fetched ticket URL '{ticket_url}' returned non-PDF content for {booking.booking_reference}")
+                except Exception as e:
+                    logger.warning(f"Could not fetch ticket URL '{ticket_url}' via HTTP for {booking.booking_reference}: {e}")
+                    pdf_bytes = None
+
+    # Attempt 3: On-the-fly generation if stored file is missing, unreadable, or not a valid %PDF- document
+    if not pdf_bytes or not pdf_bytes.startswith(b'%PDF-'):
         try:
             content_file = generate_ticket_pdf(booking)
-            pdf_bytes = content_file.read()
-            # Attempt background save if missing
+            if hasattr(content_file, 'file') and hasattr(content_file.file, 'getvalue'):
+                pdf_bytes = content_file.file.getvalue()
+            elif hasattr(content_file, 'read'):
+                pdf_bytes = content_file.read()
+            else:
+                pdf_bytes = bytes(content_file)
+
+            # Attempt background save if ticket record is missing
             if not booking.ticket or not booking.ticket.name:
                 generate_and_save_ticket(booking)
         except Exception as e:
             logger.error(f"Failed to generate ticket PDF on-the-fly for {booking.booking_reference}: {e}", exc_info=True)
+            pdf_bytes = None
 
     return pdf_bytes
 

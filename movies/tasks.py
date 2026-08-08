@@ -138,12 +138,14 @@ def send_ticket_email_task(self, booking_id):
     try:
         from .ticket_service import get_booking_ticket_bytes
         pdf_bytes = get_booking_ticket_bytes(booking)
-        if pdf_bytes:
+        if pdf_bytes and pdf_bytes.startswith(b'%PDF-'):
             pdf_attachment = {
                 'name': f'ticket_{booking.booking_reference}.pdf',
                 'content': pdf_bytes,
                 'type': 'application/pdf',
             }
+        else:
+            logger.error(f'Invalid PDF bytes generated/retrieved for booking {booking.booking_reference}')
     except Exception as e:
         logger.error(f'Failed to get ticket PDF for {booking.booking_reference}: {e}')
 

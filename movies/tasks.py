@@ -169,8 +169,9 @@ def send_ticket_email_task(self, booking_id):
             text_body=text_body,
             attachments=attachments,
         )
-    else:
-        # Fallback to standard Django EmailMessage (works with locmem for tests, console/smtp for dev/prod)
+
+    # Fallback to standard Django EmailMessage if Brevo is disabled or failed
+    if not success:
         try:
             email_msg = EmailMultiAlternatives(
                 subject=subject,
@@ -187,9 +188,11 @@ def send_ticket_email_task(self, booking_id):
                 )
             email_msg.send(fail_silently=False)
             success = True
+            mail_err_msg = None
         except Exception as mail_err:
             logger.error(f"Django email dispatch failed for booking {booking.booking_reference}: {mail_err}")
-            mail_err_msg = str(mail_err)
+            if not mail_err_msg:
+                mail_err_msg = str(mail_err)
             success = False
 
     if success:

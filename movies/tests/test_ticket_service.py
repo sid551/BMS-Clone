@@ -140,6 +140,33 @@ class TicketGenerationTestCase(TestCase):
         self.assertEqual(response['Content-Type'], 'application/pdf')
         self.assertTrue(response.content.startswith(b'%PDF-'))
 
+    def test_pdf_ticket_generation_with_cloudinary_storage_path_error(self):
+        """Test PDF ticket generation when image field raises NotImplementedError on .path (e.g. Cloudinary)."""
+        booking = Booking.objects.create(
+            user=self.user,
+            show_schedule=self.schedule,
+            movie=self.movie,
+            theater=self.theater,
+            number_of_seats=1,
+            total_price=250.00,
+            status='confirmed'
+        )
+
+        class DummyCloudinaryPoster:
+            name = 'posters/test.jpg'
+            url = 'https://res.cloudinary.com/demo/image/upload/sample.jpg'
+            @property
+            def path(self):
+                raise NotImplementedError("This backend doesn't support absolute paths.")
+
+        booking.movie.poster = DummyCloudinaryPoster()
+
+        # Should generate PDF smoothly using fallback without crashing
+        pdf_content = generate_ticket_pdf(booking)
+        self.assertIsNotNone(pdf_content)
+        pdf_bytes = pdf_content.read()
+        self.assertTrue(pdf_bytes.startswith(b'%PDF-'))
+
     def test_verify_ticket_view(self):
         """Test server-side ticket verification endpoint scanned via QR Code."""
         booking = Booking.objects.create(

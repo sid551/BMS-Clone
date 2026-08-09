@@ -175,13 +175,18 @@ def generate_ticket_pdf(booking):
         img_bytes = None
 
         # Attempt 1: Local file path
-        if hasattr(image_field, 'path'):
+        try:
+            has_path = False
             try:
-                if image_field.storage.exists(image_field.name):
-                    with open(image_field.path, 'rb') as f:
-                        img_bytes = f.read()
-            except Exception:
-                img_bytes = None
+                has_path = hasattr(image_field, 'path')
+            except (AttributeError, NotImplementedError):
+                has_path = False
+
+            if has_path and image_field.storage.exists(image_field.name):
+                with open(image_field.path, 'rb') as f:
+                    img_bytes = f.read()
+        except Exception:
+            img_bytes = None
 
         # Attempt 1b: Build path from settings.MEDIA_ROOT for relative media paths
         if not img_bytes and hasattr(image_field, 'name') and image_field.name:
@@ -216,7 +221,7 @@ def generate_ticket_pdf(booking):
                     if url.startswith('//'):
                         url = 'https:' + url
                     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(req, timeout=2) as resp:
+                    with urllib.request.urlopen(req, timeout=3) as resp:
                         if resp.status == 200:
                             img_bytes = resp.read()
             except Exception as e:
@@ -351,11 +356,12 @@ def generate_and_save_ticket(booking):
             ticket_pdf_data=raw_bytes,
         )
 
-        # 2. Save to file storage if storage is available
+        # 2. Save to file storage if storage is available (save=False avoids redundant post_save signal)
         try:
             from django.core.files.base import ContentFile
             fresh_file = ContentFile(raw_bytes, name=filename)
-            booking.ticket.save(filename, fresh_file, save=True)
+            booking.ticket.save(filename, fresh_file, save=False)
+            type(booking).objects.filter(pk=booking.pk).update(ticket=booking.ticket.name)
         except Exception as storage_err:
             logger.warning(f"File storage save skipped for booking {booking.booking_reference}: {storage_err}")
 
@@ -397,7 +403,13 @@ def get_booking_ticket_bytes(booking):
     # Attempt 2: Read directly from local file storage if available
     if not pdf_bytes and booking.ticket and booking.ticket.name:
         try:
-            if hasattr(booking.ticket, 'path') and booking.ticket.storage.exists(booking.ticket.name):
+            has_path = False
+            try:
+                has_path = hasattr(booking.ticket, 'path')
+            except (AttributeError, NotImplementedError):
+                has_path = False
+
+            if has_path and booking.ticket.storage.exists(booking.ticket.name):
                 booking.ticket.open('rb')
                 pdf_bytes = booking.ticket.read()
                 booking.ticket.close()

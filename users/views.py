@@ -77,15 +77,14 @@ def profile(request):
             except Exception:
                 pass
 
-        # Ticket URL — only access if field has a name (avoids Cloudinary call)
+        # Ticket URL / Download availability — confirmed bookings can stream ticket on-the-fly
         ticket_url = None
-        has_ticket = bool(booking.ticket and booking.ticket.name)
-        if has_ticket:
+        has_ticket = bool((booking.ticket and booking.ticket.name) or booking.ticket_pdf_data or booking.status == 'confirmed')
+        if booking.ticket and booking.ticket.name:
             try:
                 ticket_url = booking.ticket.url
             except Exception:
                 ticket_url = None
-                has_ticket = False
 
         bookings.append({
             'obj': booking,

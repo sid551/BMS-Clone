@@ -29,15 +29,13 @@ def send_email(to_email, to_name, subject, html_body, text_body, attachments=Non
         logger.warning(err_msg)
         return False, err_msg
 
-    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'tickets@bookmyshow.com')
-    # Parse "Name <email>" format if present
-    if '<' in from_email:
-        parts = from_email.split('<')
+    sender_email = getattr(settings, 'BREVO_SENDER_EMAIL', '') or getattr(settings, 'DEFAULT_FROM_EMAIL', 'tickets@bookmyshow.com')
+    sender_name = getattr(settings, 'BREVO_SENDER_NAME', '') or 'BookMyShow'
+
+    if '<' in sender_email:
+        parts = sender_email.split('<')
         sender_name = parts[0].strip().strip('"')
         sender_email = parts[1].strip().rstrip('>')
-    else:
-        sender_name = 'BookMyShow'
-        sender_email = from_email
 
     payload = {
         'sender': {'name': sender_name, 'email': sender_email},

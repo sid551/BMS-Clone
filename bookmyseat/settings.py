@@ -208,4 +208,6 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'tickets@bookmyshow.co
 
 # Brevo (Sendinblue) transactional email via HTTP API
 BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
+BREVO_SENDER_EMAIL = os.environ.get('BREVO_SENDER_EMAIL', os.environ.get('DEFAULT_FROM_EMAIL', 'tickets@bookmyshow.com'))
+BREVO_SENDER_NAME = os.environ.get('BREVO_SENDER_NAME', 'BookMyShow')
 

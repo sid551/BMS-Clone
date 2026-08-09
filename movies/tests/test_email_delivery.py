@@ -10,7 +10,8 @@ from movies.tasks import send_ticket_email_task
 @override_settings(
     CELERY_TASK_ALWAYS_EAGER=True,
     CELERY_TASK_EAGER_PROPAGATES=True,
-    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend'
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    BREVO_API_KEY=''
 )
 class EmailDeliveryTestCase(TestCase):
     def setUp(self):

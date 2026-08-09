@@ -204,10 +204,10 @@ if _email_host:
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'tickets@bookmyshow.com')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'BookMySeat <pptuse611@11777534.brevosend.com>')
 
 # Brevo (Sendinblue) transactional email via HTTP API
 BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
-BREVO_SENDER_EMAIL = os.environ.get('BREVO_SENDER_EMAIL', os.environ.get('DEFAULT_FROM_EMAIL', 'tickets@bookmyshow.com'))
-BREVO_SENDER_NAME = os.environ.get('BREVO_SENDER_NAME', 'BookMyShow')
+BREVO_SENDER_EMAIL = os.environ.get('BREVO_SENDER_EMAIL', 'pptuse611@11777534.brevosend.com')
+BREVO_SENDER_NAME = os.environ.get('BREVO_SENDER_NAME', 'BookMySeat')
 

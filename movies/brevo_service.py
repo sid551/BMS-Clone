@@ -80,8 +80,15 @@ def send_email(to_email, to_name, subject, html_body, text_body, attachments=Non
             timeout=8,
         )
         if resp.status_code in (200, 201):
-            logger.info(f'Brevo email sent to {to_email} — subject: {subject}')
-            return True, None
+            msg_id = ""
+            try:
+                res_json = resp.json()
+                msg_id = res_json.get('messageId', '')
+            except Exception:
+                pass
+            info_str = f"Brevo HTTP {resp.status_code} (Sender: {sender_email}, Message ID: {msg_id or 'OK'})"
+            logger.info(f'Brevo email sent to {to_email} — {info_str}')
+            return True, info_str
         else:
             err_msg = f'Brevo API HTTP {resp.status_code}: {resp.text}'
             logger.error(err_msg)

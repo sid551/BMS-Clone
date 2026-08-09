@@ -225,7 +225,7 @@ def send_ticket_email_task(self, booking_id):
     if success:
         booking.email_status = 'sent'
         booking.email_sent_at = timezone.now()
-        booking.email_last_error = None
+        booking.email_last_error = mail_err_msg
         booking.save(update_fields=['email_status', 'email_sent_at', 'email_attempts', 'email_last_error', 'updated_at'])
         logger.info(f'Ticket email sent to {recipient_email} for booking {booking.booking_reference}')
         return True

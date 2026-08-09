@@ -77,7 +77,7 @@ def send_email(to_email, to_name, subject, html_body, text_body, attachments=Non
                 'Accept': 'application/json',
             },
             json=payload,
-            timeout=20,
+            timeout=8,
         )
         if resp.status_code in (200, 201):
             logger.info(f'Brevo email sent to {to_email} — subject: {subject}')

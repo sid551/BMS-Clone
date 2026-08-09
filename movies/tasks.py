@@ -233,10 +233,11 @@ def send_ticket_email_task(self, booking_id):
         err_msg = mail_err_msg or 'Email dispatch failed — see logs for details.'
         booking.email_last_error = err_msg
 
-        if self.request.retries >= self.max_retries:
+        is_eager = getattr(settings, 'CELERY_TASK_ALWAYS_EAGER', False)
+        if is_eager or self.request.retries >= self.max_retries:
             booking.email_status = 'failed'
             booking.save(update_fields=['email_status', 'email_attempts', 'email_last_error', 'updated_at'])
-            logger.warning(f'Max retries reached for booking {booking.booking_reference}. Email marked failed.')
+            logger.warning(f'Email dispatch failed for booking {booking.booking_reference}: {err_msg}')
             return False
 
         booking.email_status = 'pending'

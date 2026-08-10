@@ -221,7 +221,7 @@ def generate_ticket_pdf(booking):
                     if url.startswith('//'):
                         url = 'https:' + url
                     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(req, timeout=3) as resp:
+                    with urllib.request.urlopen(req, timeout=1.5) as resp:
                         if resp.status == 200:
                             img_bytes = resp.read()
             except Exception as e:

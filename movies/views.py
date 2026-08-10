@@ -2067,8 +2067,7 @@ def resend_booking_email(request, booking_reference):
     booking.refresh_from_db()
 
     if success or booking.email_status == 'sent':
-        detail = f" ({booking.email_last_error})" if booking.email_last_error else ""
-        messages.success(request, f"Ticket email dispatched to {booking.user.email}!{detail}")
+        messages.success(request, f"Ticket email dispatched to {booking.user.email}!")
     else:
         err = booking.email_last_error or "Unknown error"
         messages.error(request, f"Failed to send ticket email: {err}")

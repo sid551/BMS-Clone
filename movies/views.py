@@ -2057,15 +2057,17 @@ def resend_booking_email(request, booking_reference):
         return redirect('profile')
 
     from .tasks import send_ticket_email_task
-    # Reset tracking status to allow email dispatch attempt
+    # Reset tracking status to allow fresh email dispatch attempt
     booking.email_status = 'pending'
-    booking.save(update_fields=['email_status'])
+    booking.email_attempts = 0
+    booking.email_last_error = None
+    booking.save(update_fields=['email_status', 'email_attempts', 'email_last_error'])
 
     success = send_ticket_email_task(booking.id)
     booking.refresh_from_db()
 
     if success or booking.email_status == 'sent':
-        detail = f" — {booking.email_last_error}" if booking.email_last_error else ""
+        detail = f" ({booking.email_last_error})" if booking.email_last_error else ""
         messages.success(request, f"Ticket email dispatched to {booking.user.email}!{detail}")
     else:
         err = booking.email_last_error or "Unknown error"

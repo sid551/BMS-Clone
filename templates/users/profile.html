@@ -124,6 +124,9 @@
                       <i class="fas fa-redo"></i>
                     </a>
                     {% endif %}
+                    {% if b.email_last_error %}
+                    <div class="small text-danger mt-1" style="font-size: 11px;">{{ b.email_last_error }}</div>
+                    {% endif %}
                     {% else %}
                     <span class="badge badge-light text-dark"><i class="fas fa-clock mr-1"></i> Pending</span>
                     {% if b.status == 'confirmed' %}

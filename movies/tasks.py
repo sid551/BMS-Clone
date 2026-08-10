@@ -151,17 +151,23 @@ def send_ticket_email_task(self, booking_id):
     except Exception as e:
         logger.error(f'Failed to get ticket PDF for {booking.booking_reference}: {e}')
 
-    # 5. Dispatch via Brevo HTTP API if key is present, else standard Django EmailMultiAlternatives
-    from .brevo_service import send_email as brevo_send
+    # 5. Multi-Transport Dispatch Priority: Brevo REST API -> MailerSend REST API -> Resend REST API -> Django Email
+    import os
+    from .brevo_service import (
+        send_email_via_brevo,
+        send_email_via_mailersend,
+        send_email_via_resend,
+    )
 
     booking.email_attempts += 1
-    api_key = getattr(settings, 'BREVO_API_KEY', '')
+    attachments = [pdf_attachment] if pdf_attachment else []
 
     success = False
     mail_err_msg = None
-    if api_key:
-        attachments = [pdf_attachment] if pdf_attachment else []
-        success, mail_err_msg = brevo_send(
+
+    # Priority 1: Brevo REST API (HTTPS Port 443 — Vercel Compatible)
+    if getattr(settings, 'BREVO_API_KEY', '') or os.environ.get('BREVO_API_KEY', ''):
+        success, mail_err_msg = send_email_via_brevo(
             to_email=recipient_email,
             to_name=booking.user.get_full_name() or booking.user.username,
             subject=subject,
@@ -170,8 +176,33 @@ def send_ticket_email_task(self, booking_id):
             attachments=attachments,
             tag=f"ticket_{booking.booking_reference}",
         )
-    else:
-        # Standard Django email backend fallback if BREVO_API_KEY is not configured
+
+    # Priority 2: MailerSend REST API Fallback
+    if not success and os.environ.get('MAILERSEND_API_KEY', ''):
+        logger.warning(f"[FALLBACK] Brevo failed or unconfigured ({mail_err_msg}). Trying MailerSend REST API...")
+        success, mail_err_msg = send_email_via_mailersend(
+            to_email=recipient_email,
+            to_name=booking.user.get_full_name() or booking.user.username,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+            attachments=attachments,
+        )
+
+    # Priority 3: Resend REST API Fallback
+    if not success and os.environ.get('RESEND_API_KEY', ''):
+        logger.warning(f"[FALLBACK] Previous transports failed ({mail_err_msg}). Trying Resend REST API...")
+        success, mail_err_msg = send_email_via_resend(
+            to_email=recipient_email,
+            to_name=booking.user.get_full_name() or booking.user.username,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+            attachments=attachments,
+        )
+
+    # Priority 4: Standard Django Email Backend Fallback (Console/SMTP/LocMem)
+    if not success:
         try:
             email_msg = EmailMultiAlternatives(
                 subject=subject,

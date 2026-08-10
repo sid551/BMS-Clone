@@ -32,19 +32,10 @@ def send_email(to_email, to_name, subject, html_body, text_body, attachments=Non
     sender_email = getattr(settings, 'BREVO_SENDER_EMAIL', '') or getattr(settings, 'DEFAULT_FROM_EMAIL', 'tickets@bookmyshow.com')
     sender_name = getattr(settings, 'BREVO_SENDER_NAME', '') or 'BookMyShow'
 
-    reply_to_email = None
     if '<' in sender_email:
         parts = sender_email.split('<')
         sender_name = parts[0].strip().strip('"')
         sender_email = parts[1].strip().rstrip('>')
-
-    # Gmail/Yahoo DMARC Alignment:
-    # Major inbox providers (Gmail, Outlook, Yahoo) reject emails sent via 3rd-party relays (Brevo)
-    # when the From domain is @gmail.com because of strict DMARC policies.
-    # We set replyTo to the Gmail address and use the authenticated brevosend.com domain as sender.
-    if sender_email.endswith(('@gmail.com', '@yahoo.com', '@hotmail.com', '@outlook.com')):
-        reply_to_email = sender_email
-        sender_email = 'pptuse611@11777534.brevosend.com'
 
     payload = {
         'sender': {'name': sender_name, 'email': sender_email},
@@ -53,9 +44,6 @@ def send_email(to_email, to_name, subject, html_body, text_body, attachments=Non
         'htmlContent': html_body,
         'textContent': text_body,
     }
-
-    if reply_to_email:
-        payload['replyTo'] = {'name': sender_name, 'email': reply_to_email}
 
     if tag:
         payload['tags'] = [str(tag)]

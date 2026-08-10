@@ -170,57 +170,28 @@ def send_ticket_email_task(self, booking_id):
             attachments=attachments,
         )
     else:
-        # Check standard Django email backend if Brevo API key is not configured
-        email_backend = getattr(settings, 'EMAIL_BACKEND', '')
-        if 'locmem' in email_backend:
-            # Unit testing backend
-            try:
-                email_msg = EmailMultiAlternatives(
-                    subject=subject,
-                    body=text_body,
-                    from_email=from_email,
-                    to=[recipient_email],
+        # Standard Django email backend fallback if BREVO_API_KEY is not configured
+        try:
+            email_msg = EmailMultiAlternatives(
+                subject=subject,
+                body=text_body,
+                from_email=from_email,
+                to=[recipient_email],
+            )
+            email_msg.attach_alternative(html_body, "text/html")
+            if pdf_attachment:
+                email_msg.attach(
+                    pdf_attachment['name'],
+                    pdf_attachment['content'],
+                    pdf_attachment['type']
                 )
-                email_msg.attach_alternative(html_body, "text/html")
-                if pdf_attachment:
-                    email_msg.attach(
-                        pdf_attachment['name'],
-                        pdf_attachment['content'],
-                        pdf_attachment['type']
-                    )
-                email_msg.send(fail_silently=False)
-                success = True
-                mail_err_msg = None
-            except Exception as mail_err:
-                mail_err_msg = str(mail_err)
-                success = False
-        elif 'console' in email_backend:
-            # Serverless/console backend without Brevo key is not actual inbox delivery
+            email_msg.send(fail_silently=False)
+            success = True
+            mail_err_msg = None
+        except Exception as mail_err:
+            logger.error(f"Django email dispatch failed for booking {booking.booking_reference}: {mail_err}")
+            mail_err_msg = str(mail_err)
             success = False
-            mail_err_msg = "BREVO_API_KEY environment variable is not configured in Vercel settings. Configure BREVO_API_KEY to send emails via HTTP API."
-        else:
-            # SMTP backend
-            try:
-                email_msg = EmailMultiAlternatives(
-                    subject=subject,
-                    body=text_body,
-                    from_email=from_email,
-                    to=[recipient_email],
-                )
-                email_msg.attach_alternative(html_body, "text/html")
-                if pdf_attachment:
-                    email_msg.attach(
-                        pdf_attachment['name'],
-                        pdf_attachment['content'],
-                        pdf_attachment['type']
-                    )
-                email_msg.send(fail_silently=False)
-                success = True
-                mail_err_msg = None
-            except Exception as mail_err:
-                logger.error(f"Django email dispatch failed for booking {booking.booking_reference}: {mail_err}")
-                mail_err_msg = str(mail_err)
-                success = False
 
     if success:
         booking.email_status = 'sent'

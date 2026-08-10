@@ -56,8 +56,15 @@ def send_email(to_email, to_name, subject, html_body, text_body, attachments=Non
             elif hasattr(content_data, 'getvalue'):
                 content_data = content_data.getvalue()
 
-            if isinstance(content_data, str):
+            if isinstance(content_data, memoryview):
+                content_data = bytes(content_data)
+            elif isinstance(content_data, str):
                 content_data = content_data.encode('utf-8')
+            elif content_data and not isinstance(content_data, (bytes, bytearray)):
+                try:
+                    content_data = bytes(content_data)
+                except Exception:
+                    pass
 
             if content_data and len(content_data) > 50:
                 encoded = base64.b64encode(content_data).decode('utf-8')
@@ -77,7 +84,7 @@ def send_email(to_email, to_name, subject, html_body, text_body, attachments=Non
                 'Accept': 'application/json',
             },
             json=payload,
-            timeout=8,
+            timeout=12,
         )
         if resp.status_code in (200, 201):
             msg_id = ""

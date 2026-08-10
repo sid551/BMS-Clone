@@ -28,18 +28,21 @@ def auto_generate_ticket_and_email_on_confirmation(sender, instance, created, **
 
         # Step 2: Dispatch background email task if email hasn't been processed yet
         if instance.email_status == 'pending' and instance.email_attempts == 0:
-            try:
-                from .tasks import send_ticket_email_task
-                from django.conf import settings
-                if getattr(settings, 'CELERY_TASK_ALWAYS_EAGER', False):
-                    send_ticket_email_task(instance.id)
-                else:
-                    try:
-                        send_ticket_email_task.delay(instance.id)
-                    except Exception as celery_err:
-                        logger.warning(f"Celery delay failed for booking {instance.booking_reference}, falling back to synchronous delivery: {celery_err}")
+            def _dispatch():
+                try:
+                    from .tasks import send_ticket_email_task
+                    from django.conf import settings
+                    if getattr(settings, 'CELERY_TASK_ALWAYS_EAGER', False):
                         send_ticket_email_task(instance.id)
-                logger.info(f"Dispatched email task for booking {instance.booking_reference}")
-            except Exception as e:
-                # Log error if dispatch fails without interrupting HTTP response/booking
-                logger.error(f"Failed to dispatch email task for booking {instance.booking_reference}: {e}", exc_info=True)
+                    else:
+                        try:
+                            send_ticket_email_task.delay(instance.id)
+                        except Exception as celery_err:
+                            logger.warning(f"Celery delay failed for booking {instance.booking_reference}, falling back to synchronous delivery: {celery_err}")
+                            send_ticket_email_task(instance.id)
+                    logger.info(f"Dispatched email task for booking {instance.booking_reference}")
+                except Exception as e:
+                    logger.error(f"Failed to dispatch email task for booking {instance.booking_reference}: {e}", exc_info=True)
+
+            from django.db import transaction
+            transaction.on_commit(_dispatch)

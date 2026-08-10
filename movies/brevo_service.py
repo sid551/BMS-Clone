@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email'
 
 
-def send_email(to_email, to_name, subject, html_body, text_body, attachments=None):
+def send_email(to_email, to_name, subject, html_body, text_body, attachments=None, tag=None):
     """
     Send a transactional email via Brevo HTTP API.
 
@@ -44,6 +44,9 @@ def send_email(to_email, to_name, subject, html_body, text_body, attachments=Non
         'htmlContent': html_body,
         'textContent': text_body,
     }
+
+    if tag:
+        payload['tags'] = [str(tag)]
 
     if attachments:
         payload['attachment'] = []

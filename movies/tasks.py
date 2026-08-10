@@ -168,6 +168,7 @@ def send_ticket_email_task(self, booking_id):
             html_body=html_body,
             text_body=text_body,
             attachments=attachments,
+            tag=f"ticket_{booking.booking_reference}",
         )
     else:
         # Standard Django email backend fallback if BREVO_API_KEY is not configured

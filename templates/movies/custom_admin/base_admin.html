@@ -210,23 +210,38 @@
       const closeBtn = document.getElementById('sidebarCloseBtn');
       const sidebar = document.getElementById('adminSidebar');
       const overlay = document.getElementById('sidebarOverlay');
+      const icon = document.getElementById('sidebarToggleIcon');
+
+      function closeSidebar() {
+        if (sidebar) sidebar.classList.remove('show');
+        if (overlay) overlay.classList.remove('show');
+        if (icon) {
+          icon.classList.remove('fa-times');
+          icon.classList.add('fa-bars');
+        }
+      }
 
       if (toggleBtn && sidebar && overlay) {
-        toggleBtn.addEventListener('click', function() {
-          sidebar.classList.toggle('show');
+        toggleBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const isShow = sidebar.classList.toggle('show');
           overlay.classList.toggle('show');
+          if (icon) {
+            if (isShow) {
+              icon.classList.remove('fa-bars');
+              icon.classList.add('fa-times');
+            } else {
+              icon.classList.remove('fa-times');
+              icon.classList.add('fa-bars');
+            }
+          }
         });
 
-        overlay.addEventListener('click', function() {
-          sidebar.classList.remove('show');
-          overlay.classList.remove('show');
-        });
+        overlay.addEventListener('click', closeSidebar);
 
         if (closeBtn) {
-          closeBtn.addEventListener('click', function() {
-            sidebar.classList.remove('show');
-            overlay.classList.remove('show');
-          });
+          closeBtn.addEventListener('click', closeSidebar);
         }
       }
     });

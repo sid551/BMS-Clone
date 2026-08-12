@@ -16,9 +16,12 @@
 
   <style>
     :root {
-      --admin-sidebar-width: 250px;
-      --admin-bg: #f4f6f9;
-      --admin-primary: #3b82f6;
+      --admin-sidebar-width: 260px;
+      --admin-bg: #f8fafc;
+      --admin-primary: #2563eb;
+      --admin-dark: #0f172a;
+      --admin-surface: #ffffff;
+      --admin-border: #e2e8f0;
     }
     
     body {
@@ -41,7 +44,7 @@
       width: var(--admin-sidebar-width);
       min-height: calc(100vh - 56px);
       flex-shrink: 0;
-      transition: all 0.3s ease-in-out;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       z-index: 1040;
     }
 
@@ -53,14 +56,17 @@
     }
 
     .card {
-      border-radius: 0.5rem;
-      border: 1px solid rgba(226, 232, 240, 0.8);
+      border-radius: 0.75rem;
+      border: 1px solid var(--admin-border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
+      background-color: var(--admin-surface);
     }
 
     .card-stat {
       overflow: hidden;
       position: relative;
+      border-radius: 0.75rem;
     }
 
     .card-stat .stat-icon {
@@ -73,8 +79,56 @@
     }
 
     .card-stat:hover .stat-icon {
-      transform: scale(1.1);
+      transform: scale(1.15);
       opacity: 0.25;
+    }
+
+    .table-responsive {
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .table thead th {
+      background-color: #f1f5f9;
+      color: #475569;
+      font-weight: 700;
+      font-size: 0.8rem;
+      text-uppercase: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--admin-border);
+      padding: 0.75rem 1rem;
+      white-space: nowrap;
+    }
+
+    .table tbody td {
+      vertical-align: middle;
+      padding: 0.85rem 1rem;
+      font-size: 0.9rem;
+    }
+
+    .btn-sm {
+      border-radius: 0.375rem;
+      font-weight: 600;
+      font-size: 0.82rem;
+    }
+
+    .form-control {
+      border-radius: 0.5rem;
+      border: 1px solid var(--admin-border);
+      font-size: 0.9rem;
+    }
+
+    .form-control:focus {
+      border-color: var(--admin-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .badge {
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      padding: 0.35em 0.65em;
+      border-radius: 0.375rem;
     }
 
     .transition-all {
@@ -82,10 +136,14 @@
     }
 
     @media (max-width: 767.98px) {
+      .admin-main-content {
+        padding: 1rem 0.75rem;
+      }
+
       .admin-sidebar {
         position: fixed;
         top: 0;
-        left: -260px;
+        left: -270px;
         height: 100vh;
         z-index: 1050;
       }
@@ -99,7 +157,8 @@
         left: 0;
         width: 100vw;
         height: 100vh;
-        background: rgba(0,0,0,0.5);
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(2px);
         z-index: 1045;
       }
       .admin-sidebar-overlay.show {

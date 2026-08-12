@@ -1,38 +1,35 @@
-{% extends "users/basic.html" %}
+{% extends "movies/custom_admin/base_admin.html" %}
 
-{% block title %}Manage Movies - Admin{% endblock %}
+{% block title %}Manage Movies - Admin Console{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-  {% include 'movies/custom_admin/_admin_nav.html' %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-
+{% block admin_content %}
+<div class="container-fluid p-0">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
     <div>
-      <a href="{% url 'admin_dashboard' %}" class="text-muted small">&laquo; Back to Admin Dashboard</a>
-      <h2 class="mb-0">Manage Movies</h2>
+      <h3 class="font-weight-bold text-dark mb-1">
+        <i class="fas fa-film text-warning mr-2"></i>Manage Movies
+      </h3>
+      <p class="text-muted small mb-0">View, edit, filter, and add movies to the BookMySeat catalog.</p>
     </div>
-    <a href="{% url 'admin_movie_add' %}" class="btn btn-primary">
+    <a href="{% url 'admin_movie_add' %}" class="btn btn-primary font-weight-bold shadow-sm mt-2 mt-sm-0">
       <i class="fas fa-plus mr-1"></i> Add New Movie
     </a>
   </div>
 
-  {% for message in messages %}
-    <div class="alert alert-info alert-dismissible fade show">
-      {{ message }}
-      <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
-    </div>
-  {% endfor %}
-
   <form method="get" class="form-inline mb-4">
-    <input type="text" name="search" value="{{ search }}" class="form-control mr-2" placeholder="Search by title...">
-    <button type="submit" class="btn btn-secondary">Search</button>
+    <div class="input-group w-100" style="max-width: 400px;">
+      <input type="text" name="search" value="{{ search }}" class="form-control" placeholder="Search by title...">
+      <div class="input-group-append">
+        <button type="submit" class="btn btn-secondary font-weight-bold"><i class="fas fa-search mr-1"></i> Search</button>
+      </div>
+    </div>
   </form>
 
-  <div class="card shadow-sm">
+  <div class="card shadow-sm border-0">
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-hover mb-0">
-          <thead class="thead-light">
+          <thead>
             <tr>
               <th>Title</th>
               <th>Status</th>
@@ -47,27 +44,26 @@
             {% for m in movies %}
               <tr>
                 <td>
-                  <strong><a href="{% url 'movie_detail' m.id %}">{{ m.title }}</a></strong>
+                  <strong><a href="{% url 'movie_detail' m.id %}" class="text-dark">{{ m.title }}</a></strong>
                 </td>
                 <td>
                   {% if m.status == 'now_showing' %}
-                    <span class="badge badge-success">Now Showing</span>
+                    <span class="badge badge-success px-2 py-1">Now Showing</span>
                   {% elif m.status == 'upcoming' %}
-                    <span class="badge badge-warning">Upcoming</span>
+                    <span class="badge badge-warning text-dark px-2 py-1">Upcoming</span>
                   {% else %}
-                    <span class="badge badge-secondary">Ended</span>
+                    <span class="badge badge-secondary px-2 py-1">Ended</span>
                   {% endif %}
                 </td>
                 <td>{{ m.duration_formatted|default:m.duration_minutes }}</td>
-                <td>{{ m.age_certification|default:"-" }}</td>
-                <td>&#9733; {{ m.rating }} ({{ m.review_count }})</td>
+                <td><span class="badge badge-light border">{{ m.age_certification|default:"-" }}</span></td>
+                <td><i class="fas fa-star text-warning mr-1"></i> {{ m.rating }} ({{ m.review_count }})</td>
                 <td>{{ m.release_date|date:"M d, Y"|default:"-" }}</td>
                 <td class="text-right">
                   <a href="{% url 'admin_movie_gallery' m.id %}" class="btn btn-sm btn-outline-info mr-1">Gallery</a>
                   <a href="{% url 'admin_movie_edit' m.id %}" class="btn btn-sm btn-outline-primary mr-1">Edit</a>
                   <a href="{% url 'admin_movie_delete' m.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
                 </td>
-
               </tr>
             {% empty %}
               <tr>

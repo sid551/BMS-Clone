@@ -1,21 +1,21 @@
-{% extends "users/basic.html" %}
+{% extends "movies/custom_admin/base_admin.html" %}
 
-{% block title %}Seat Management - Admin Panel{% endblock %}
+{% block title %}Seat Management - Admin Console{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-  {% include 'movies/custom_admin/_admin_nav.html' %}
+{% block admin_content %}
+<div class="container-fluid p-0">
 
   <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
     <div>
-      <a href="{% url 'admin_dashboard' %}" class="text-muted small">&laquo; Back to Admin Dashboard</a>
-      <h2 class="mb-0"><i class="fas fa-chair text-danger mr-2"></i>Seat & Layout Management GUI</h2>
-      <p class="text-muted mb-0">Single-click GUI tool to toggle seats between Available 🟢 and Unavailable 🔴 with live capacity auto-sync.</p>
+      <h3 class="font-weight-bold text-dark mb-1">
+        <i class="fas fa-chair text-danger mr-2"></i>Seat & Layout Management GUI
+      </h3>
+      <p class="text-muted small mb-0">Single-click GUI tool to toggle seats between Available 🟢 and Unavailable 🔴 with live capacity auto-sync.</p>
     </div>
     {% if selected_screen %}
-      <button class="btn btn-success font-weight-bold shadow-sm py-2 px-3" onclick="window.location.reload();">
-        <i class="fas fa-check-circle mr-1"></i> Save & Apply Changes Everywhere
+      <button class="btn btn-success font-weight-bold shadow-sm py-2 px-3 mt-2 mt-sm-0" onclick="window.location.reload();">
+        <i class="fas fa-check-circle mr-1"></i> Save & Apply Changes
       </button>
     {% endif %}
   </div>

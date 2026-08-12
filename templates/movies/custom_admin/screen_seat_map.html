@@ -1,29 +1,24 @@
-{% extends "users/basic.html" %}
+{% extends "movies/custom_admin/base_admin.html" %}
 
-{% block title %}{{ screen.name }} Seat Grid - Admin{% endblock %}
+{% block title %}{{ screen.name }} Seat Grid - Admin Console{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+{% block admin_content %}
+<div class="container-fluid p-0">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
     <div>
-      <a href="{% url 'admin_manage_screens' %}" class="text-muted small">&laquo; Back to Screens</a>
-      <h2 class="mb-0">{{ screen.theater.name }} — {{ screen.name }} Seat Grid</h2>
-      <p class="text-muted mb-0">Total {{ screen.total_seats }} Seats ({{ screen.total_rows }} Rows &times; {{ screen.seats_per_row }} Columns)</p>
+      <h3 class="font-weight-bold text-dark mb-1">
+        <i class="fas fa-th text-info mr-2"></i>{{ screen.theater.name }} — {{ screen.name }} Seat Grid
+      </h3>
+      <p class="text-muted small mb-0">Total {{ screen.total_seats }} Seats ({{ screen.total_rows }} Rows &times; {{ screen.seats_per_row }} Columns)</p>
     </div>
+    <a href="{% url 'admin_manage_screens' %}" class="btn btn-outline-secondary btn-sm font-weight-bold mt-2 mt-sm-0">&laquo; Back to Screens</a>
   </div>
 
-  {% for message in messages %}
-    <div class="alert alert-info alert-dismissible fade show">
-      {{ message }}
-      <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
-    </div>
-  {% endfor %}
-
   <!-- Legend -->
-  <div class="card mb-4 shadow-sm">
-    <div class="card-body py-2">
+  <div class="card mb-4 shadow-sm border-0">
+    <div class="card-body py-3">
       <div class="d-flex justify-content-around flex-wrap align-items-center">
-        <div><span class="badge badge-warning p-2 mr-1">Recliner / VIP (1.5x)</span></div>
+        <div><span class="badge badge-warning text-dark p-2 mr-1">Recliner / VIP (1.5x)</span></div>
         <div><span class="badge badge-primary p-2 mr-1">Premium (1.2x)</span></div>
         <div><span class="badge badge-secondary p-2 mr-1">Regular (1.0x)</span></div>
         <div><span class="badge badge-danger p-2">Maintenance / Inactive</span></div>
@@ -31,12 +26,12 @@
     </div>
   </div>
 
-  <div class="card shadow-sm">
-    <div class="card-body text-center overflow-auto">
+  <div class="card shadow-sm border-0">
+    <div class="card-body text-center overflow-auto p-4">
       <div class="screen-box mb-4">SCREEN THIS WAY</div>
 
       {% for row_name, row_seats in row_groups.items %}
-        <div class="d-flex justify-content-center align-items-center mb-2">
+        <div class="d-flex justify-content-center align-items-center mb-2 flex-nowrap" style="min-width: fit-content;">
           <span class="font-weight-bold text-muted mr-3" style="width: 25px;">{{ row_name }}</span>
           {% for s in row_seats %}
             <div class="dropdown d-inline-block">
@@ -75,20 +70,21 @@
 
 <style>
   .screen-box {
-    background: #343a40;
-    color: #fff;
-    padding: 8px;
-    letter-spacing: 4px;
-    border-radius: 4px;
-    font-weight: bold;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    background: #0f172a;
+    color: #38bdf8;
+    padding: 10px;
+    letter-spacing: 6px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   }
   .seat-btn {
     width: 38px;
     height: 38px;
     padding: 0;
     line-height: 38px;
-    font-weight: bold;
+    font-weight: 700;
     border-radius: 6px;
   }
 </style>

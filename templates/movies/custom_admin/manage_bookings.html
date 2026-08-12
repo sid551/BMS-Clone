@@ -1,33 +1,26 @@
-{% extends "users/basic.html" %}
+{% extends "movies/custom_admin/base_admin.html" %}
 
-{% block title %}Manage Bookings - Admin Panel{% endblock %}
+{% block title %}Manage Bookings - Admin Console{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-  {% include 'movies/custom_admin/_admin_nav.html' %}
-
-  <div class="d-flex justify-content-between align-items-center mb-3">
+{% block admin_content %}
+<div class="container-fluid p-0">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
     <div>
-      <h2 class="mb-0"><i class="fas fa-ticket-alt text-primary mr-2"></i>User Bookings Management</h2>
-      <p class="text-muted mb-0">View all customer ticket reservations, confirm pending orders, or process cancellations.</p>
+      <h3 class="font-weight-bold text-dark mb-1">
+        <i class="fas fa-ticket-alt text-primary mr-2"></i>User Bookings Management
+      </h3>
+      <p class="text-muted small mb-0">View all customer ticket reservations, confirm pending orders, or process cancellations.</p>
     </div>
   </div>
 
-  {% for message in messages %}
-    <div class="alert alert-info alert-dismissible fade show">
-      {{ message }}
-      <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
-    </div>
-  {% endfor %}
-
   <!-- Filter & Search Bar -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-body">
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body py-3">
       <form method="get" class="row">
-        <div class="col-md-6 mb-2">
+        <div class="col-md-6 mb-2 mb-md-0">
           <input type="text" name="search" value="{{ search }}" class="form-control" placeholder="Search reference code, username, email, movie...">
         </div>
-        <div class="col-md-4 mb-2">
+        <div class="col-md-4 mb-2 mb-md-0">
           <select name="status" class="form-control">
             <option value="">-- All Statuses --</option>
             <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
@@ -35,19 +28,19 @@
             <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
           </select>
         </div>
-        <div class="col-md-2 mb-2">
-          <button type="submit" class="btn btn-primary btn-block">Filter</button>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary font-weight-bold btn-block"><i class="fas fa-filter mr-1"></i> Filter</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- Bookings Table -->
-  <div class="card shadow-sm">
+  <div class="card shadow-sm border-0">
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-hover table-striped mb-0">
-          <thead class="thead-dark">
+        <table class="table table-hover mb-0">
+          <thead>
             <tr>
               <th>Ref Code</th>
               <th>Customer</th>
@@ -70,14 +63,14 @@
                 </td>
                 <td>
                   {% if b.show_schedule %}
-                    {{ b.show_schedule.show_time|date:"M d, h:i A" }}
+                    <i class="far fa-clock text-info mr-1"></i> {{ b.show_schedule.show_time|date:"M d, h:i A" }}
                   {% else %}
                     <span class="text-muted">N/A</span>
                   {% endif %}
                 </td>
                 <td>
-                  <span class="badge badge-info">{{ b.number_of_seats }} Seat(s)</span>
-                  <div class="small text-muted">
+                  <span class="badge badge-info px-2 py-1">{{ b.number_of_seats }} Seat(s)</span>
+                  <div class="small text-muted mt-1">
                     {% for bs in b.booked_seats.all %}
                       {{ bs.seat.seat_number }}{% if not forloop.last %}, {% endif %}
                     {% endfor %}
@@ -90,7 +83,7 @@
                   {% elif b.status == 'cancelled' %}
                     <span class="badge badge-secondary px-2 py-1">Cancelled</span>
                   {% else %}
-                    <span class="badge badge-warning px-2 py-1">Pending</span>
+                    <span class="badge badge-warning text-dark px-2 py-1">Pending</span>
                   {% endif %}
                 </td>
                 <td>
@@ -103,7 +96,7 @@
                       <button type="submit" name="action" value="cancel" class="btn btn-sm btn-outline-danger" onclick="return confirm('Cancel booking and restore seat availability?')">Cancel</button>
                     </form>
                   {% else %}
-                    <span class="text-muted font-italic">No action</span>
+                    <span class="text-muted small font-italic">No action</span>
                   {% endif %}
                 </td>
               </tr>

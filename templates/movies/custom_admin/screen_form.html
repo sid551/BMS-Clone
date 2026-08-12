@@ -1,40 +1,47 @@
-{% extends "users/basic.html" %}
+{% extends "movies/custom_admin/base_admin.html" %}
 
-{% block title %}{% if screen %}Edit Screen{% else %}Add Screen{% endif %} - Admin{% endblock %}
+{% block title %}{% if screen %}Edit Screen{% else %}Add Screen{% endif %} - Admin Console{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-  <a href="{% url 'admin_manage_screens' %}" class="text-muted small">&laquo; Back to Screens</a>
-  <h2 class="mb-4">{% if screen %}Edit Screen: {{ screen.name }}{% else %}Add New Theater Screen{% endif %}</h2>
+{% block admin_content %}
+<div class="container-fluid p-0">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+    <div>
+      <h3 class="font-weight-bold text-dark mb-1">
+        <i class="fas fa-desktop text-danger mr-2"></i>{% if screen %}Edit Screen: {{ screen.name }}{% else %}Add New Theater Screen{% endif %}
+      </h3>
+      <p class="text-muted small mb-0">Configure theater screen technology format, seating rows, and layout matrix.</p>
+    </div>
+    <a href="{% url 'admin_manage_screens' %}" class="btn btn-outline-secondary btn-sm font-weight-bold mt-2 mt-sm-0">&laquo; Back to Screens</a>
+  </div>
 
-  <div class="card shadow-sm" style="max-width: 600px;">
-    <div class="card-body">
+  <div class="card shadow-sm border-0" style="max-width: 650px;">
+    <div class="card-body p-4">
       <form method="post">
         {% csrf_token %}
         <div class="form-group">
-          <label>Theater *</label>
+          <label class="font-weight-bold">Theater *</label>
           {{ form.theater }}
         </div>
         <div class="form-group">
-          <label>Screen Name *</label>
+          <label class="font-weight-bold">Screen Name *</label>
           {{ form.name }}
           <small class="text-muted">e.g. Screen 1, Audi 2 - IMAX, Gold Screen</small>
         </div>
         <div class="form-group">
-          <label>Screen Technology Type *</label>
+          <label class="font-weight-bold">Screen Technology Type *</label>
           {{ form.screen_type }}
         </div>
         <div class="row">
           <div class="col-md-6">
             <div class="form-group">
-              <label>Total Rows *</label>
+              <label class="font-weight-bold">Total Rows *</label>
               {{ form.total_rows }}
               <small class="text-muted">Rows named A, B, C...</small>
             </div>
           </div>
           <div class="col-md-6">
             <div class="form-group">
-              <label>Seats Per Row *</label>
+              <label class="font-weight-bold">Seats Per Row *</label>
               {{ form.seats_per_row }}
               <small class="text-muted">Numbered 1..N</small>
             </div>
@@ -42,7 +49,7 @@
         </div>
 
         <div class="border-top pt-3 text-right">
-          <a href="{% url 'admin_manage_screens' %}" class="btn btn-secondary mr-2">Cancel</a>
+          <a href="{% url 'admin_manage_screens' %}" class="btn btn-secondary mr-2 font-weight-bold">Cancel</a>
           <button type="submit" class="btn btn-success font-weight-bold px-4 py-2"><i class="fas fa-save mr-1"></i> Save & Apply Changes</button>
         </div>
       </form>

@@ -15,12 +15,11 @@
 <div class="container py-4">
 
   <div class="row mb-4">
-
-    <div class="col-md-3 mb-3">
-      <img src="{% if movie.poster %}{{ movie.poster|image_url }}{% else %}{{ movie.image|image_url }}{% endif %}" class="img-fluid rounded shadow" alt="{{ movie.title }}" style="width:100%;object-fit:cover;max-height:420px">
+    <div class="col-lg-3 col-md-4 col-12 mb-3 text-center text-md-left">
+      <img src="{% if movie.poster %}{{ movie.poster|image_url }}{% else %}{{ movie.image|image_url }}{% endif %}" class="img-fluid rounded shadow-lg" alt="{{ movie.title }}" style="width:100%; max-width:300px; object-fit:cover; max-height:420px; border-radius: 14px;">
     </div>
 
-    <div class="col-md-9">
+    <div class="col-lg-9 col-md-8 col-12">
 
       <h2 class="mb-1">{{ movie.title }}
         {% if movie.status == 'now_showing' %}

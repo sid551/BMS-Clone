@@ -1,16 +1,21 @@
-{% extends "users/basic.html" %}
+{% extends "movies/custom_admin/base_admin.html" %}
 
-{% block title %}{% if theater %}Edit Theater{% else %}Add Theater{% endif %} - Admin{% endblock %}
+{% block title %}{% if theater %}Edit Theater{% else %}Add Theater{% endif %} - Admin Console{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-  {% include 'movies/custom_admin/_admin_nav.html' %}
-  
-  <a href="{% url 'admin_manage_theaters' %}" class="text-muted small">&laquo; Back to Theaters</a>
-  <h2 class="mb-4"><i class="fas fa-building text-primary mr-2"></i>{% if theater %}Edit Theater: {{ theater.name }}{% else %}Add New Theater & Venue{% endif %}</h2>
+{% block admin_content %}
+<div class="container-fluid p-0">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+    <div>
+      <h3 class="font-weight-bold text-dark mb-1">
+        <i class="fas fa-building text-success mr-2"></i>{% if theater %}Edit Theater: {{ theater.name }}{% else %}Add New Theater & Venue{% endif %}
+      </h3>
+      <p class="text-muted small mb-0">Set up theater details, location address, and auditorium seating capacity.</p>
+    </div>
+    <a href="{% url 'admin_manage_theaters' %}" class="btn btn-outline-secondary btn-sm font-weight-bold mt-2 mt-sm-0">&laquo; Back to Theaters</a>
+  </div>
 
-  <div class="card shadow-sm" style="max-width: 600px;">
-    <div class="card-body">
+  <div class="card shadow-sm border-0" style="max-width: 650px;">
+    <div class="card-body p-4">
       <form method="post">
         {% csrf_token %}
         <div class="form-group">
@@ -30,7 +35,7 @@
         </div>
 
         <div class="border-top pt-3 text-right">
-          <a href="{% url 'admin_manage_theaters' %}" class="btn btn-secondary mr-2">Cancel</a>
+          <a href="{% url 'admin_manage_theaters' %}" class="btn btn-secondary mr-2 font-weight-bold">Cancel</a>
           <button type="submit" class="btn btn-success font-weight-bold px-4 py-2"><i class="fas fa-save mr-1"></i> Save & Apply Changes</button>
         </div>
       </form>

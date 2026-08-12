@@ -1,43 +1,36 @@
-{% extends "users/basic.html" %}
+{% extends "movies/custom_admin/base_admin.html" %}
 
-{% block title %}Show Schedules - Admin{% endblock %}
+{% block title %}Show Schedules - Admin Console{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-  {% include 'movies/custom_admin/_admin_nav.html' %}
-  
+{% block admin_content %}
+<div class="container-fluid p-0">
   <form method="post" id="bulk-delete-form" onsubmit="return confirmBulkDelete();">
     {% csrf_token %}
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
       <div>
-        <a href="{% url 'admin_dashboard' %}" class="text-muted small">&laquo; Back to Admin Dashboard</a>
-        <h2 class="mb-0">Show Schedules</h2>
+        <h3 class="font-weight-bold text-dark mb-1">
+          <i class="fas fa-calendar-alt text-info mr-2"></i>Manage Show Schedules
+        </h3>
+        <p class="text-muted small mb-0">Create, edit, and bulk generate movie showtimes across theaters & screens.</p>
       </div>
-      <div class="d-flex align-items-center">
-        <button type="submit" id="btn-bulk-delete" class="btn btn-danger mr-2" disabled style="display: inline-flex; align-items: center; gap: 6px;">
-          <i class="fas fa-trash-alt"></i> Delete Selected (<span id="selected-count">0</span>)
+      <div class="d-flex align-items-center flex-wrap mt-2 mt-sm-0">
+        <button type="submit" id="btn-bulk-delete" class="btn btn-danger btn-sm font-weight-bold mr-2 mb-1" disabled>
+          <i class="fas fa-trash-alt mr-1"></i> Delete Selected (<span id="selected-count">0</span>)
         </button>
-        <a href="{% url 'admin_bulk_schedule_add' %}" class="btn btn-warning mr-2">
+        <a href="{% url 'admin_bulk_schedule_add' %}" class="btn btn-warning btn-sm font-weight-bold text-dark mr-2 mb-1">
           <i class="fas fa-bolt mr-1"></i> Bulk Generator
         </a>
-        <a href="{% url 'admin_schedule_add' %}" class="btn btn-primary">
+        <a href="{% url 'admin_schedule_add' %}" class="btn btn-primary btn-sm font-weight-bold mb-1">
           <i class="fas fa-plus mr-1"></i> Add Show Schedule
         </a>
       </div>
     </div>
 
-    {% for message in messages %}
-      <div class="alert alert-info alert-dismissible fade show">
-        {{ message }}
-        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
-      </div>
-    {% endfor %}
-
-    <div class="card shadow-sm">
+    <div class="card shadow-sm border-0">
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover mb-0 align-middle">
-            <thead class="thead-light">
+          <table class="table table-hover mb-0">
+            <thead>
               <tr>
                 <th style="width: 45px;" class="text-center">
                   <input type="checkbox" id="select-all" onclick="toggleSelectAll(this)" style="cursor: pointer; width: 16px; height: 16px;">
@@ -53,27 +46,26 @@
             <tbody>
               {% for s in schedules %}
                 <tr>
-                  <td class="text-center align-middle">
+                  <td class="text-center">
                     <input type="checkbox" name="schedule_ids" value="{{ s.id }}" class="schedule-cb" onchange="updateSelectionCount()" style="cursor: pointer; width: 16px; height: 16px;">
                   </td>
-                  <td class="align-middle"><strong>{{ s.movie.title }}</strong></td>
-                  <td class="align-middle">
+                  <td><strong>{{ s.movie.title }}</strong></td>
+                  <td>
                     {{ s.theater.name }} <small class="text-muted">({{ s.theater.location }})</small>
                     {% if s.screen %}
-                      <br><span class="badge badge-info">{{ s.screen.name }} ({{ s.screen.get_screen_type_display }})</span>
+                      <br><span class="badge badge-info px-2 py-1 mt-1">{{ s.screen.name }} ({{ s.screen.get_screen_type_display }})</span>
                     {% endif %}
                   </td>
-                  <td class="align-middle">{{ s.show_time|date:"M d, Y - h:i A" }}</td>
-                  <td class="align-middle">&#8377;{{ s.price }}</td>
-                  <td class="align-middle">
+                  <td><i class="far fa-clock text-info mr-1"></i> {{ s.show_time|date:"M d, Y - h:i A" }}</td>
+                  <td><span class="font-weight-bold text-dark">&#8377;{{ s.price }}</span></td>
+                  <td>
                     <span class="font-weight-bold text-success">{{ s.available_seats }}</span> / {{ s.get_max_capacity }}
                   </td>
-                  <td class="text-right align-middle">
+                  <td class="text-right">
                     <a href="{% url 'admin_schedule_edit' s.id %}" class="btn btn-sm btn-outline-primary mr-1">Edit</a>
                     <a href="{% url 'admin_schedule_delete' s.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
                   </td>
                 </tr>
-
               {% empty %}
                 <tr>
                   <td colspan="7" class="text-center text-muted py-4">No show schedules created yet.</td>
@@ -101,18 +93,20 @@ function updateSelectionCount() {
   const btn = document.getElementById('btn-bulk-delete');
   const master = document.getElementById('select-all');
 
-  countSpan.innerText = checked.length;
-  btn.disabled = checked.length === 0;
+  if (countSpan) countSpan.innerText = checked.length;
+  if (btn) btn.disabled = checked.length === 0;
 
-  if (checked.length === 0) {
-    master.checked = false;
-    master.indeterminate = false;
-  } else if (checked.length === checkboxes.length) {
-    master.checked = true;
-    master.indeterminate = false;
-  } else {
-    master.checked = false;
-    master.indeterminate = true;
+  if (master) {
+    if (checked.length === 0) {
+      master.checked = false;
+      master.indeterminate = false;
+    } else if (checked.length === checkboxes.length) {
+      master.checked = true;
+      master.indeterminate = false;
+    } else {
+      master.checked = false;
+      master.indeterminate = true;
+    }
   }
 }
 

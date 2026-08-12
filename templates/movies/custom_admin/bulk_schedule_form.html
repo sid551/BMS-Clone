@@ -1,31 +1,24 @@
-{% extends "users/basic.html" %}
+{% extends "movies/custom_admin/base_admin.html" %}
 
-{% block title %}Bulk Schedule Generator - Admin Panel{% endblock %}
+{% block title %}Bulk Schedule Generator - Admin Console{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-  {% include 'movies/custom_admin/_admin_nav.html' %}
-
-  <div class="d-flex justify-content-between align-items-center mb-3">
+{% block admin_content %}
+<div class="container-fluid p-0">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
     <div>
-      <h2 class="mb-0"><i class="fas fa-bolt text-warning mr-2"></i>Bulk Show Schedule Generator</h2>
-      <p class="text-muted mb-0">Generate multiple showtimes across date ranges automatically without manual repetition.</p>
+      <h3 class="font-weight-bold text-dark mb-1">
+        <i class="fas fa-bolt text-warning mr-2"></i>Bulk Show Schedule Generator
+      </h3>
+      <p class="text-muted small mb-0">Generate multiple showtimes across date ranges automatically without manual repetition.</p>
     </div>
-    <a href="{% url 'admin_manage_schedules' %}" class="btn btn-outline-secondary btn-sm">&laquo; Back to Schedules</a>
+    <a href="{% url 'admin_manage_schedules' %}" class="btn btn-outline-secondary btn-sm font-weight-bold mt-2 mt-sm-0">&laquo; Back to Schedules</a>
   </div>
 
-  {% for message in messages %}
-    <div class="alert alert-info alert-dismissible fade show">
-      {{ message }}
-      <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-dark text-white font-weight-bold py-3">
+      <i class="fas fa-magic text-warning mr-2"></i>Generate Showtimes
     </div>
-  {% endfor %}
-
-  <div class="card shadow-sm">
-    <div class="card-header bg-dark text-white font-weight-bold">
-      <i class="fas fa-magic mr-2"></i>Generate Showtimes
-    </div>
-    <div class="card-body">
+    <div class="card-body p-4">
       <form method="post">
         {% csrf_token %}
         <div class="row">
@@ -69,8 +62,8 @@
           </div>
         </div>
 
-        <button type="submit" class="btn btn-success btn-block py-3 mt-3 font-weight-bold shadow-sm">
-          <i class="fas fa-save mr-2"></i>Save & Apply All Showtimes Everywhere (1-Click)
+        <button type="submit" class="btn btn-success btn-block py-3 mt-3 font-weight-bold shadow-sm" style="font-size: 1rem;">
+          <i class="fas fa-save mr-2"></i>Generate & Save All Showtimes
         </button>
       </form>
     </div>

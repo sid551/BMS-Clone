@@ -71,54 +71,56 @@
             {% csrf_token %}
             <input type="hidden" name="schedule_id" value="{{ schedule.id }}">
 
-            <!-- Multi-Tier Layout Grid -->
-            {% for tier_name, rows in tier_groups.items %}
-              {% if rows %}
-                <div class="tier-section mb-4">
-                  <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-                    <span class="font-weight-bold text-uppercase tier-title">
-                      {% if tier_name == 'recliner' %}
-                        <i class="fas fa-couch text-warning mr-2"></i>Recliner / VIP
-                      {% elif tier_name == 'premium' %}
-                        <i class="fas fa-star text-primary mr-2"></i>Premium
-                      {% else %}
-                        <i class="fas fa-chair text-secondary mr-2"></i>Executive / Regular
-                      {% endif %}
-                    </span>
-                    {% if tier_prices|get_item:tier_name %}
-                      <span class="badge badge-pill badge-light border" style="font-size: 13px;">
-                        &#8377;{{ tier_prices|get_item:tier_name }}
+            <!-- Multi-Tier Layout Grid (Scrollable Container for Mobile Screens) -->
+            <div class="seat-matrix-wrapper" style="overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0.5rem 0;">
+              {% for tier_name, rows in tier_groups.items %}
+                {% if rows %}
+                  <div class="tier-section mb-4" style="min-width: fit-content;">
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                      <span class="font-weight-bold text-uppercase tier-title">
+                        {% if tier_name == 'recliner' %}
+                          <i class="fas fa-couch text-warning mr-2"></i>Recliner / VIP
+                        {% elif tier_name == 'premium' %}
+                          <i class="fas fa-star text-primary mr-2"></i>Premium
+                        {% else %}
+                          <i class="fas fa-chair text-secondary mr-2"></i>Executive / Regular
+                        {% endif %}
                       </span>
-                    {% endif %}
-                  </div>
-
-                  {% for row_letter, seat_list in rows.items %}
-                    <div class="d-flex justify-content-center align-items-center mb-2 flex-wrap">
-                      <span class="row-label mr-3">{{ row_letter }}</span>
-                      {% for seat in seat_list %}
-                        <div class="seat-wrapper m-1">
-                          {% if seat.is_already_booked %}
-                            <button type="button" class="btn btn-sm seat-item sold" disabled title="Seat {{ seat.seat_number }} (Sold)">
-                              {{ seat.number }}
-                            </button>
-                          {% else %}
-                            <input type="checkbox" name="seats" value="{{ seat.id }}"
-                                   data-seat-number="{{ seat.seat_number }}"
-                                   data-price="{{ seat.calculated_price }}"
-                                   data-tier="{{ seat.get_seat_type_display }}"
-                                   class="seat-checkbox d-none" id="seat-check-{{ seat.id }}">
-                            <label for="seat-check-{{ seat.id }}" class="seat-label seat-item tier-{{ seat.seat_type }}" title="Seat {{ seat.seat_number }} - &#8377;{{ seat.calculated_price }}">
-                              {{ seat.number }}
-                            </label>
-                          {% endif %}
-                        </div>
-                      {% endfor %}
-                      <span class="row-label ml-3">{{ row_letter }}</span>
+                      {% if tier_prices|get_item:tier_name %}
+                        <span class="badge badge-pill badge-light border" style="font-size: 13px;">
+                          &#8377;{{ tier_prices|get_item:tier_name }}
+                        </span>
+                      {% endif %}
                     </div>
-                  {% endfor %}
-                </div>
-              {% endif %}
-            {% endfor %}
+
+                    {% for row_letter, seat_list in rows.items %}
+                      <div class="d-flex justify-content-center align-items-center mb-2 flex-nowrap" style="min-width: fit-content;">
+                        <span class="row-label mr-3">{{ row_letter }}</span>
+                        {% for seat in seat_list %}
+                          <div class="seat-wrapper m-1">
+                            {% if seat.is_already_booked %}
+                              <button type="button" class="btn btn-sm seat-item sold" disabled title="Seat {{ seat.seat_number }} (Sold)">
+                                {{ seat.number }}
+                              </button>
+                            {% else %}
+                              <input type="checkbox" name="seats" value="{{ seat.id }}"
+                                     data-seat-number="{{ seat.seat_number }}"
+                                     data-price="{{ seat.calculated_price }}"
+                                     data-tier="{{ seat.get_seat_type_display }}"
+                                     class="seat-checkbox d-none" id="seat-check-{{ seat.id }}">
+                              <label for="seat-check-{{ seat.id }}" class="seat-label seat-item tier-{{ seat.seat_type }}" title="Seat {{ seat.seat_number }} - &#8377;{{ seat.calculated_price }}">
+                                {{ seat.number }}
+                              </label>
+                            {% endif %}
+                          </div>
+                        {% endfor %}
+                        <span class="row-label ml-3">{{ row_letter }}</span>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
 
             <!-- Legend Bar -->
             <div class="d-flex justify-content-center flex-wrap my-4 py-3 bg-light rounded">

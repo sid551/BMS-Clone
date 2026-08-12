@@ -1,42 +1,36 @@
-{% extends "users/basic.html" %}
+{% extends "movies/custom_admin/base_admin.html" %}
 
-{% block title %}Movie Gallery - {{ movie.title }}{% endblock %}
+{% block title %}Movie Gallery - {{ movie.title }} - Admin Console{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-  {% include 'movies/custom_admin/_admin_nav.html' %}
-
-  <div class="d-flex justify-content-between align-items-center mb-3">
+{% block admin_content %}
+<div class="container-fluid p-0">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
     <div>
-      <a href="{% url 'admin_manage_movies' %}" class="text-muted small">&laquo; Back to Movies</a>
-      <h2 class="mb-0"><i class="fas fa-images text-info mr-2"></i>Gallery Images: {{ movie.title }}</h2>
+      <h3 class="font-weight-bold text-dark mb-1">
+        <i class="fas fa-images text-info mr-2"></i>Gallery Images: {{ movie.title }}
+      </h3>
+      <p class="text-muted small mb-0">Upload promotional posters, stills, and gallery images for movie details page.</p>
     </div>
+    <a href="{% url 'admin_manage_movies' %}" class="btn btn-outline-secondary btn-sm font-weight-bold mt-2 mt-sm-0">&laquo; Back to Movies</a>
   </div>
 
-  {% for message in messages %}
-    <div class="alert alert-info alert-dismissible fade show">
-      {{ message }}
-      <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
-    </div>
-  {% endfor %}
-
   <!-- Upload Image Form -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-header bg-dark text-white font-weight-bold">
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-dark text-white font-weight-bold py-3">
       <i class="fas fa-upload mr-2"></i>Add Poster / Gallery Image
     </div>
-    <div class="card-body">
-      <form method="post" enctype="multipart/form-data" class="form-inline">
+    <div class="card-body p-4">
+      <form method="post" enctype="multipart/form-data" class="form-inline flex-wrap">
         {% csrf_token %}
         <input type="hidden" name="add_image" value="1">
-        <div class="form-group mr-3">
-          <label class="mr-2">Image File:</label>
+        <div class="form-group mr-3 mb-2">
+          <label class="mr-2 font-weight-bold">Image File:</label>
           <input type="file" name="image" class="form-control-file" required>
         </div>
-        <div class="form-group mr-3">
+        <div class="form-group mr-3 mb-2">
           <input type="text" name="caption" class="form-control" placeholder="Optional caption (e.g. Poster 2)">
         </div>
-        <button type="submit" class="btn btn-primary">Upload Image</button>
+        <button type="submit" class="btn btn-primary font-weight-bold mb-2"><i class="fas fa-cloud-upload-alt mr-1"></i> Upload Image</button>
       </form>
     </div>
   </div>
@@ -44,24 +38,24 @@
   <!-- Image Grid -->
   <div class="row">
     {% for img in images %}
-      <div class="col-md-3 col-6 mb-4">
-        <div class="card h-100 shadow-sm text-center">
+      <div class="col-xl-3 col-lg-4 col-md-4 col-sm-6 mb-4">
+        <div class="card h-100 shadow-sm border-0 text-center">
           {% if img.image_url %}
-            <img src="{{ img.image_url }}" class="card-img-top p-2" style="height: 200px; object-fit: cover;">
+            <img src="{{ img.image_url }}" class="card-img-top p-2" style="height: 220px; object-fit: cover; border-radius: 12px;">
           {% endif %}
           <div class="card-body py-2">
             <p class="small text-muted mb-2">{{ img.caption|default:"No caption" }}</p>
             <form method="post">
               {% csrf_token %}
               <input type="hidden" name="delete_image_id" value="{{ img.id }}">
-              <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete image?')">Delete</button>
+              <button type="submit" class="btn btn-sm btn-outline-danger font-weight-bold" onclick="return confirm('Delete image?')">Delete Image</button>
             </form>
           </div>
         </div>
       </div>
     {% empty %}
       <div class="col-12">
-        <div class="alert alert-light border text-center text-muted">No extra gallery images uploaded for this movie yet.</div>
+        <div class="alert alert-light border text-center text-muted py-4">No extra gallery images uploaded for this movie yet.</div>
       </div>
     {% endfor %}
   </div>

@@ -135,6 +135,12 @@
       transition: all 0.2s ease;
     }
 
+    @media (min-width: 768px) {
+      .admin-wrapper.sidebar-collapsed .admin-sidebar {
+        margin-left: calc(-1 * var(--admin-sidebar-width));
+      }
+    }
+
     @media (max-width: 767.98px) {
       .admin-main-content {
         padding: 1rem 0.75rem;
@@ -143,12 +149,13 @@
       .admin-sidebar {
         position: fixed;
         top: 0;
-        left: -270px;
+        left: -280px;
         height: 100vh;
         z-index: 1050;
+        box-shadow: 4px 0 15px rgba(0,0,0,0.3);
       }
       .admin-sidebar.show {
-        left: 0;
+        left: 0 !important;
       }
       .admin-sidebar-overlay {
         display: none;
@@ -162,7 +169,7 @@
         z-index: 1045;
       }
       .admin-sidebar-overlay.show {
-        display: block;
+        display: block !important;
       }
     }
   </style>
@@ -210,9 +217,10 @@
       const closeBtn = document.getElementById('sidebarCloseBtn');
       const sidebar = document.getElementById('adminSidebar');
       const overlay = document.getElementById('sidebarOverlay');
+      const wrapper = document.querySelector('.admin-wrapper');
       const icon = document.getElementById('sidebarToggleIcon');
 
-      function closeSidebar() {
+      function closeMobileSidebar() {
         if (sidebar) sidebar.classList.remove('show');
         if (overlay) overlay.classList.remove('show');
         if (icon) {
@@ -221,28 +229,39 @@
         }
       }
 
-      if (toggleBtn && sidebar && overlay) {
+      if (toggleBtn) {
         toggleBtn.addEventListener('click', function(e) {
           e.preventDefault();
           e.stopPropagation();
-          const isShow = sidebar.classList.toggle('show');
-          overlay.classList.toggle('show');
-          if (icon) {
-            if (isShow) {
-              icon.classList.remove('fa-bars');
-              icon.classList.add('fa-times');
-            } else {
-              icon.classList.remove('fa-times');
-              icon.classList.add('fa-bars');
+
+          if (window.innerWidth < 768) {
+            if (sidebar) {
+              const isShow = sidebar.classList.toggle('show');
+              if (overlay) overlay.classList.toggle('show', isShow);
+              if (icon) {
+                if (isShow) {
+                  icon.classList.remove('fa-bars');
+                  icon.classList.add('fa-times');
+                } else {
+                  icon.classList.remove('fa-times');
+                  icon.classList.add('fa-bars');
+                }
+              }
+            }
+          } else {
+            if (wrapper) {
+              wrapper.classList.toggle('sidebar-collapsed');
             }
           }
         });
+      }
 
-        overlay.addEventListener('click', closeSidebar);
+      if (overlay) {
+        overlay.addEventListener('click', closeMobileSidebar);
+      }
 
-        if (closeBtn) {
-          closeBtn.addEventListener('click', closeSidebar);
-        }
+      if (closeBtn) {
+        closeBtn.addEventListener('click', closeMobileSidebar);
       }
     });
   </script>

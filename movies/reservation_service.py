@@ -273,7 +273,7 @@ def get_reservation_status(user, schedule_id):
     )
 
     if not user_seats.exists():
-        return {'seats': [], 'seconds_remaining': 0, 'expired': True}
+        return {'status': 'none', 'seats': [], 'seconds_remaining': 0, 'expired': True}
 
     now = timezone.now()
     min_remaining = None
@@ -294,10 +294,12 @@ def get_reservation_status(user, schedule_id):
             'seconds_remaining': remaining,
         })
 
+    is_expired = (min_remaining or 0) == 0
     return {
+        'status': 'expired' if is_expired else 'reserved',
         'seats': seats_data,
         'seconds_remaining': min_remaining or 0,
-        'expired': (min_remaining or 0) == 0,
+        'expired': is_expired,
     }
 
 

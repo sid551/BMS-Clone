@@ -376,7 +376,7 @@
       fetch('/movies/schedule/' + scheduleId + '/reservation-status/')
       .then(function(res) { return res.json(); })
       .then(function(data) {
-        if (data.status === 'reserved' && data.seats && data.seats.length > 0) {
+        if (!data.expired && data.seats && data.seats.length > 0 && data.seconds_remaining > 0) {
           var reservedSeatIds = data.seats.map(function(s) { return s.seat_id; });
           checkboxes.forEach(function(cb) {
             if (reservedSeatIds.indexOf(parseInt(cb.value)) !== -1) {

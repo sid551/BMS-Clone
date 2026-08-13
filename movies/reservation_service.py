@@ -28,6 +28,9 @@ def _release_stale(schedule_id):
     count = stale.count()
     if count:
         stale.update(status='available', reserved_by=None, reserved_until=None)
+        sch = ShowSchedule.objects.filter(pk=schedule_id).first()
+        if sch:
+            sch.sync_available_seats()
     return count
 
 
@@ -98,6 +101,9 @@ def reserve_seats(user, schedule_id, seat_ids):
         reserved_until=expiry,
     )
 
+    if sch:
+        sch.sync_available_seats()
+
     return list(
         ShowSeat.objects.filter(pk__in=pks).select_related('seat')
     )
@@ -130,6 +136,9 @@ def release_user_reservations(user, schedule_id):
     count = seats.count()
     if count:
         seats.update(status='available', reserved_by=None, reserved_until=None)
+        sch = ShowSchedule.objects.filter(pk=schedule_id).first()
+        if sch:
+            sch.sync_available_seats()
     return count
 
 
@@ -221,9 +230,8 @@ def confirm_booking(user, schedule_id):
         reserved_until=None,
     )
 
-    # Decrement available seats on the schedule
-    schedule.available_seats = max(0, schedule.available_seats - number_of_seats)
-    schedule.save(update_fields=['available_seats'])
+    # Sync available seats on the schedule
+    schedule.sync_available_seats()
 
     # Generate PDF ticket and dispatch email task AFTER transaction commits
     # Using on_commit ensures the booking is fully saved before Celery reads it

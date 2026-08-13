@@ -272,9 +272,10 @@ def book_seats(request, theater_id):
     else:
         all_seats = Seat.objects.filter(theater=theater, is_active=True).order_by('seat_number')
 
-    # Clean up stale reservations
+    # Clean up stale reservations & sync live available count
     from .reservation_service import _release_stale
     _release_stale(schedule.id)
+    schedule.sync_available_seats()
 
     confirmed_booked_ids = set(
         BookingSeat.objects.filter(show_schedule=schedule)
@@ -532,8 +533,9 @@ def seat_map_api(request, schedule_id):
     if not schedule.show_seats.exists() and schedule.screen:
         schedule._generate_show_seats()
 
-    # Clean up expired reservations before serving
+    # Clean up expired reservations and sync live available count
     _expire_stale_reservations_by_id(schedule_id)
+    live_available = schedule.sync_available_seats()
 
     show_seats = (
         schedule.show_seats
@@ -542,12 +544,14 @@ def seat_map_api(request, schedule_id):
     )
 
     current_user_id = request.user.id if request.user.is_authenticated else None
+    now = timezone.now()
 
     rows = {}
     for ss in show_seats:
         seat = ss.seat
         row = seat.row
         is_mine = (ss.reserved_by_id == current_user_id and ss.status == 'reserved')
+        rem_sec = max(0, int((ss.reserved_until - now).total_seconds())) if (is_mine and ss.reserved_until) else 0
         rows.setdefault(row, []).append({
             'id': ss.id,
             'seat_id': seat.id,
@@ -560,7 +564,8 @@ def seat_map_api(request, schedule_id):
             'status': ss.status,
             'is_active': seat.is_active,
             'is_mine': is_mine,
-            'seconds_remaining': ss.seconds_remaining if is_mine else 0,
+            'is_reserved_by_other': (ss.status == 'reserved' and not is_mine),
+            'seconds_remaining': rem_sec,
         })
 
     return JsonResponse({
@@ -570,13 +575,13 @@ def seat_map_api(request, schedule_id):
         'screen': schedule.screen.name if schedule.screen else None,
         'show_time': schedule.show_time.isoformat(),
         'base_price': float(schedule.price),
-        'available_seats': schedule.available_seats,
+        'available_seats': live_available,
         'rows': rows,
         'summary': {
             'total': show_seats.count(),
             'available': show_seats.filter(status='available').count(),
             'booked': show_seats.filter(status='booked').count(),
-            'reserved': show_seats.filter(status='reserved').count(),
+            'reserved': show_seats.filter(status='reserved', reserved_until__gte=now).count(),
         }
     })
 

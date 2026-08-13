@@ -397,6 +397,14 @@
         .then(function(res) { return res.json(); })
         .then(function(data) {
           if (!data || !data.rows) return;
+
+          // Update available count live on the page
+          if (availCountElem && typeof data.available_seats !== 'undefined') {
+            var mySelectedCount = document.querySelectorAll('.seat-checkbox:checked').length;
+            var liveAvailable = Math.max(0, data.available_seats - mySelectedCount);
+            availCountElem.textContent = liveAvailable;
+          }
+
           var unavailableSeatIds = [];
           for (var r in data.rows) {
             data.rows[r].forEach(function(s) {

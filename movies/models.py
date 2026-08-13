@@ -373,6 +373,39 @@ class ShowSchedule(models.Model):
             ignore_conflicts=True
         )
 
+    def get_available_seats_count(self):
+        """
+        Dynamically calculate available seats count by releasing expired reservations
+        and subtracting active booked & reserved seats.
+        """
+        from django.utils import timezone
+        now = timezone.now()
+
+        if self.pk:
+            if self.screen_id and not self.show_seats.exists():
+                self._generate_show_seats()
+
+            # Release stale reservations
+            self.show_seats.filter(status='reserved', reserved_until__lt=now).update(
+                status='available', reserved_by=None, reserved_until=None
+            )
+
+            if self.show_seats.exists():
+                return self.show_seats.filter(seat__is_active=True, status='available').count()
+
+        max_cap = self.get_max_capacity()
+        booked = self.booked_seats.count() if self.pk else 0
+        active_reserved = self.show_seats.filter(status='reserved', reserved_until__gte=now).count() if self.pk else 0
+        return max(0, max_cap - booked - active_reserved)
+
+    def sync_available_seats(self):
+        """Re-calculate and persist live available seats count in DB."""
+        count = self.get_available_seats_count()
+        if self.available_seats != count:
+            self.available_seats = count
+            super().save(update_fields=['available_seats'])
+        return count
+
     def __str__(self):
         screen_str = f' [{self.screen.name}]' if self.screen else ''
         return f'{self.movie.title} @ {self.theater.name}{screen_str} — {self.show_time}'

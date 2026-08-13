@@ -40,7 +40,7 @@
             <div class="mt-2 mt-sm-0 text-right">
               {% if schedule %}
                 <span id="availableSeatsBadge" class="badge badge-success p-2 font-weight-normal" style="font-size: 14px;">
-                  <span id="availableSeatsCount">{{ schedule.available_seats }}</span> seat{{ schedule.available_seats|pluralize }} available
+                  <span id="availableSeatsCount">{{ effective_available_seats|default:schedule.available_seats }}</span> seat{{ effective_available_seats|default:schedule.available_seats|pluralize }} available
                 </span>
               {% endif %}
             </div>
@@ -246,14 +246,14 @@
     var releaseBtn = document.getElementById('releaseTimerBtn');
     var scheduleId = "{% if schedule %}{{ schedule.id }}{% endif %}";
     var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
-    var initialAvailableCount = parseInt("{{ schedule.available_seats|default:0 }}") || 0;
+    var baseAvailableCount = parseInt("{{ effective_available_seats|default:schedule.available_seats|default:0 }}") || 0;
     var availCountElem = document.getElementById('availableSeatsCount');
 
     var countdownInterval = null;
 
     function updateAvailableSeatsDisplay(selectedCount) {
       if (availCountElem) {
-        var remaining = Math.max(0, initialAvailableCount - selectedCount);
+        var remaining = Math.max(0, baseAvailableCount - selectedCount);
         availCountElem.textContent = remaining;
       }
     }
@@ -398,11 +398,11 @@
         .then(function(data) {
           if (!data || !data.rows) return;
 
-          // Update available count live on the page
-          if (availCountElem && typeof data.available_seats !== 'undefined') {
+          // Update base available count for this user live from server
+          if (typeof data.available_seats !== 'undefined') {
+            baseAvailableCount = data.available_seats;
             var mySelectedCount = document.querySelectorAll('.seat-checkbox:checked').length;
-            var liveAvailable = Math.max(0, data.available_seats - mySelectedCount);
-            availCountElem.textContent = liveAvailable;
+            updateAvailableSeatsDisplay(mySelectedCount);
           }
 
           var unavailableSeatIds = [];

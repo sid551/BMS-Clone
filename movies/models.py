@@ -373,10 +373,10 @@ class ShowSchedule(models.Model):
             ignore_conflicts=True
         )
 
-    def get_available_seats_count(self):
+    def get_unbooked_seats_count(self):
         """
-        Dynamically calculate available seats count by releasing expired reservations
-        and subtracting active booked & reserved seats.
+        Calculates total active seats minus confirmed booked seats.
+        Stale reservations are released first.
         """
         from django.utils import timezone
         now = timezone.now()
@@ -391,16 +391,15 @@ class ShowSchedule(models.Model):
             )
 
             if self.show_seats.exists():
-                return self.show_seats.filter(seat__is_active=True, status='available').count()
+                return self.show_seats.filter(seat__is_active=True).exclude(status='booked').count()
 
         max_cap = self.get_max_capacity()
         booked = self.booked_seats.count() if self.pk else 0
-        active_reserved = self.show_seats.filter(status='reserved', reserved_until__gte=now).count() if self.pk else 0
-        return max(0, max_cap - booked - active_reserved)
+        return max(0, max_cap - booked)
 
     def sync_available_seats(self):
-        """Re-calculate and persist live available seats count in DB."""
-        count = self.get_available_seats_count()
+        """Re-calculate and persist unbooked available seats count in DB."""
+        count = self.get_unbooked_seats_count()
         if self.available_seats != count:
             self.available_seats = count
             super().save(update_fields=['available_seats'])

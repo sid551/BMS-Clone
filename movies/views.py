@@ -304,6 +304,8 @@ def book_seats(request, theater_id):
         tier = s.seat_type if s.seat_type in tier_groups else 'regular'
         tier_groups[tier].setdefault(s.row, []).append(s)
 
+    effective_available_seats = max(0, schedule.available_seats - len(reserved_by_others_ids))
+
     return render(request, 'movies/seat_selection.html', {
         'theaters': theater,
         'schedule': schedule,
@@ -311,6 +313,7 @@ def book_seats(request, theater_id):
         'tier_groups': tier_groups,
         'tier_prices': tier_prices,
         'seats': all_seats,
+        'effective_available_seats': effective_available_seats,
     })
 
 
@@ -533,9 +536,9 @@ def seat_map_api(request, schedule_id):
     if not schedule.show_seats.exists() and schedule.screen:
         schedule._generate_show_seats()
 
-    # Clean up expired reservations and sync live available count
+    # Clean up expired reservations and sync unbooked count
     _expire_stale_reservations_by_id(schedule_id)
-    live_available = schedule.sync_available_seats()
+    total_unbooked = schedule.sync_available_seats()
 
     show_seats = (
         schedule.show_seats
@@ -546,11 +549,17 @@ def seat_map_api(request, schedule_id):
     current_user_id = request.user.id if request.user.is_authenticated else None
     now = timezone.now()
 
+    reserved_by_others_count = 0
     rows = {}
     for ss in show_seats:
         seat = ss.seat
         row = seat.row
-        is_mine = (ss.reserved_by_id == current_user_id and ss.status == 'reserved')
+        is_mine = (ss.reserved_by_id == current_user_id and ss.status == 'reserved' and ss.reserved_until and ss.reserved_until >= now)
+        is_reserved_by_other = (ss.status == 'reserved' and ss.reserved_until and ss.reserved_until >= now and not is_mine)
+
+        if is_reserved_by_other:
+            reserved_by_others_count += 1
+
         rem_sec = max(0, int((ss.reserved_until - now).total_seconds())) if (is_mine and ss.reserved_until) else 0
         rows.setdefault(row, []).append({
             'id': ss.id,
@@ -564,9 +573,11 @@ def seat_map_api(request, schedule_id):
             'status': ss.status,
             'is_active': seat.is_active,
             'is_mine': is_mine,
-            'is_reserved_by_other': (ss.status == 'reserved' and not is_mine),
+            'is_reserved_by_other': is_reserved_by_other,
             'seconds_remaining': rem_sec,
         })
+
+    available_for_user = max(0, total_unbooked - reserved_by_others_count)
 
     return JsonResponse({
         'schedule_id': schedule.id,
@@ -575,7 +586,8 @@ def seat_map_api(request, schedule_id):
         'screen': schedule.screen.name if schedule.screen else None,
         'show_time': schedule.show_time.isoformat(),
         'base_price': float(schedule.price),
-        'available_seats': live_available,
+        'available_seats': available_for_user,
+        'total_unbooked': total_unbooked,
         'rows': rows,
         'summary': {
             'total': show_seats.count(),

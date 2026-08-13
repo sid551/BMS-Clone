@@ -152,6 +152,15 @@ class TheaterAdmin(admin.ModelAdmin):
     search_fields = ['name', 'location']
     inlines = [ScreenInline, SeatInline]
 
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        for formset in formsets:
+            if formset.model == Screen:
+                for screen in formset.instances:
+                    if screen.pk:
+                        screen.generate_seats(force_resync=True)
+                        screen.update_theater_capacity()
+
 
 @admin.register(Screen)
 class ScreenAdmin(admin.ModelAdmin):
@@ -162,7 +171,7 @@ class ScreenAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        obj.generate_seats()
+        obj.generate_seats(force_resync=True)
         messages.info(request, f'Seat layout grid automatically updated for screen "{obj.name}" ({obj.total_seats} total seats).')
 
     def seat_map_link(self, obj):
@@ -173,7 +182,7 @@ class ScreenAdmin(admin.ModelAdmin):
     def generate_screen_seats(self, request, queryset):
         count = 0
         for screen in queryset:
-            screen.generate_seats()
+            screen.generate_seats(force_resync=True)
             count += 1
         self.message_user(request, f'Seat grids generated for {count} screen(s).')
     generate_screen_seats.short_description = 'Generate seat layout grid'
@@ -296,9 +305,27 @@ class SeatAdmin(admin.ModelAdmin):
         screen_id = request.GET.get('screen_id')
         schedule_id = request.GET.get('schedule_id')
 
-        selected_theater = Theater.objects.filter(id=theater_id).first() if theater_id else theaters.first()
+        selected_screen = None
+        selected_theater = None
+
+        if screen_id:
+            selected_screen = Screen.objects.filter(id=screen_id).first()
+            if selected_screen:
+                selected_theater = selected_screen.theater
+
+        if not selected_theater and theater_id:
+            selected_theater = Theater.objects.filter(id=theater_id).first()
+
+        if not selected_theater:
+            selected_theater = Theater.objects.filter(screens__isnull=False).distinct().first()
+            if not selected_theater:
+                selected_theater = theaters.first()
+
         screens = selected_theater.screens.all() if selected_theater else Screen.objects.none()
-        selected_screen = screens.filter(id=screen_id).first() if screen_id else screens.first()
+
+        if selected_theater:
+            if not selected_screen or selected_screen.theater_id != selected_theater.id:
+                selected_screen = screens.first()
 
         schedules = ShowSchedule.objects.filter(theater=selected_theater).order_by('-show_time') if selected_theater else ShowSchedule.objects.none()
         selected_schedule = schedules.filter(id=schedule_id).first() if schedule_id else None

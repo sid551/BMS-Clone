@@ -59,8 +59,8 @@
                 <td>{{ s.total_rows }} rows &times; {{ s.seats_per_row }} seats</td>
                 <td><span class="badge badge-success px-2 py-1">{{ s.total_seats }} Seats</span></td>
                 <td class="text-right">
-                  <a href="{% url 'admin_screen_seat_map' s.id %}" class="btn btn-sm btn-outline-info mr-1">
-                    <i class="fas fa-th mr-1"></i>Seat Grid
+                  <a href="{% url 'admin_manage_seats' %}?theater_id={{ s.theater.id }}&screen_id={{ s.id }}" class="btn btn-sm btn-outline-info mr-1" title="Manage Seat Layout">
+                    <i class="fas fa-th mr-1"></i>Seat Layout
                   </a>
                   <a href="{% url 'admin_screen_edit' s.id %}" class="btn btn-sm btn-outline-primary mr-1">Edit</a>
                   <a href="{% url 'admin_screen_delete' s.id %}" class="btn btn-sm btn-outline-danger">Delete</a>

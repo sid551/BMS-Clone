@@ -237,27 +237,18 @@ class Screen(models.Model):
         return self.total_rows * self.seats_per_row
 
     def generate_seats(self, force_resync=False):
-        """Auto-generate seat layout grid for this screen if not present."""
+        """Auto-generate and sync seat layout grid for this screen."""
         import string
         rows = list(string.ascii_uppercase[:min(self.total_rows, 26)])
 
-        if self.seats.exists():
-            if not force_resync:
-                return
-            # Re-sync tiers if forced
-            for row_idx, row_name in enumerate(rows):
-                if row_idx < max(1, int(len(rows) * 0.40)):
-                    stype, mult = 'regular', 1.00
-                elif row_idx < int(len(rows) * 0.75):
-                    stype, mult = 'premium', 1.20
-                else:
-                    stype, mult = 'recliner', 1.50
-                self.seats.filter(row=row_name).update(seat_type=stype, price_multiplier=mult)
-            return
+        if self.pk:
+            # Sync theater FK across existing seats if screen's theater changed
+            self.seats.exclude(theater_id=self.theater_id).update(theater=self.theater)
 
+        existing_seats = {(s.row, s.number): s for s in self.seats.all()}
         seats_to_create = []
+
         for row_idx, row_name in enumerate(rows):
-            # Tiers: Front (Row A...) Regular (1.0x), Middle Premium (1.2x), Back Recliner (1.5x)
             if row_idx < max(1, int(len(rows) * 0.40)):
                 seat_type = 'regular'
                 multiplier = 1.00
@@ -269,18 +260,46 @@ class Screen(models.Model):
                 multiplier = 1.50
 
             for num in range(1, self.seats_per_row + 1):
+                coord = (row_name, num)
                 seat_num_str = f'{row_name}{num}'
-                seats_to_create.append(Seat(
-                    screen=self,
-                    theater=self.theater,
-                    row=row_name,
-                    number=num,
-                    seat_number=seat_num_str,
-                    seat_type=seat_type,
-                    price_multiplier=multiplier,
-                    is_active=True
-                ))
-        Seat.objects.bulk_create(seats_to_create)
+                if coord in existing_seats:
+                    s = existing_seats[coord]
+                    fields_to_update = []
+                    if s.theater_id != self.theater_id:
+                        s.theater = self.theater
+                        fields_to_update.append('theater')
+                    if s.seat_number != seat_num_str:
+                        s.seat_number = seat_num_str
+                        fields_to_update.append('seat_number')
+                    if force_resync and (s.seat_type != seat_type or float(s.price_multiplier) != float(multiplier)):
+                        s.seat_type = seat_type
+                        s.price_multiplier = multiplier
+                        fields_to_update.extend(['seat_type', 'price_multiplier'])
+                    if fields_to_update:
+                        s.save(update_fields=fields_to_update)
+                else:
+                    seats_to_create.append(Seat(
+                        screen=self,
+                        theater=self.theater,
+                        row=row_name,
+                        number=num,
+                        seat_number=seat_num_str,
+                        seat_type=seat_type,
+                        price_multiplier=multiplier,
+                        is_active=True
+                    ))
+
+        if seats_to_create:
+            Seat.objects.bulk_create(seats_to_create)
+
+        # Deactivate or delete seats outside current row/number dimensions
+        invalid_seats = self.seats.exclude(row__in=rows) | self.seats.filter(number__gt=self.seats_per_row)
+        for s in invalid_seats:
+            if not s.is_booked and not s.show_bookings.exists():
+                s.delete()
+            else:
+                s.is_active = False
+                s.save(update_fields=['is_active'])
 
     def update_theater_capacity(self):
         """Recalculate total seats for theater from all screens."""

@@ -308,13 +308,15 @@ class SeatAdmin(admin.ModelAdmin):
         selected_screen = None
         selected_theater = None
 
-        if screen_id:
-            selected_screen = Screen.objects.filter(id=screen_id).first()
-            if selected_screen:
-                selected_theater = selected_screen.theater
-
-        if not selected_theater and theater_id:
+        if theater_id:
             selected_theater = Theater.objects.filter(id=theater_id).first()
+
+        if screen_id:
+            screen_obj = Screen.objects.filter(id=screen_id).first()
+            if screen_obj:
+                if not selected_theater or selected_theater.id == screen_obj.theater_id:
+                    selected_theater = screen_obj.theater
+                    selected_screen = screen_obj
 
         if not selected_theater:
             selected_theater = Theater.objects.filter(screens__isnull=False).distinct().first()
@@ -323,9 +325,8 @@ class SeatAdmin(admin.ModelAdmin):
 
         screens = selected_theater.screens.all() if selected_theater else Screen.objects.none()
 
-        if selected_theater:
-            if not selected_screen or selected_screen.theater_id != selected_theater.id:
-                selected_screen = screens.first()
+        if selected_theater and (not selected_screen or selected_screen.theater_id != selected_theater.id):
+            selected_screen = screens.first()
 
         schedules = ShowSchedule.objects.filter(theater=selected_theater).order_by('-show_time') if selected_theater else ShowSchedule.objects.none()
         selected_schedule = schedules.filter(id=schedule_id).first() if schedule_id else None

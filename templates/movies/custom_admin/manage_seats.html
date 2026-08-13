@@ -36,7 +36,7 @@
       <form method="get" class="row">
         <div class="col-md-4 mb-2">
           <label class="small font-weight-bold">1. Select Theater</label>
-          <select name="theater_id" class="form-control" onchange="this.form.submit()">
+          <select name="theater_id" class="form-control" onchange="if(this.form.screen_id) this.form.screen_id.value=''; if(this.form.schedule_id) this.form.schedule_id.value=''; this.form.submit();">
             {% for t in theaters %}
               <option value="{{ t.id }}" {% if selected_theater and selected_theater.id == t.id %}selected{% endif %}>
                 {{ t.name }} ({{ t.location|default:"Main Branch" }})
@@ -47,7 +47,7 @@
 
         <div class="col-md-4 mb-2">
           <label class="small font-weight-bold">2. Select Screen / Audi</label>
-          <select name="screen_id" class="form-control" onchange="this.form.submit()">
+          <select name="screen_id" class="form-control" onchange="if(this.form.schedule_id) this.form.schedule_id.value=''; this.form.submit();">
             {% for s in screens %}
               <option value="{{ s.id }}" {% if selected_screen and selected_screen.id == s.id %}selected{% endif %}>
                 {{ s.name }} ({{ s.get_screen_type_display }})

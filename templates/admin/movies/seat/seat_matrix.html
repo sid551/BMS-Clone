@@ -95,7 +95,7 @@
     <form method="get" id="filter-form" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
       <div style="flex: 1; min-width: 200px;">
         <label for="id_theater" style="display: block; font-weight: 600; margin-bottom: 4px;">Theater</label>
-        <select name="theater_id" id="id_theater" onchange="document.getElementById('filter-form').submit();" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+        <select name="theater_id" id="id_theater" onchange="var s=document.getElementById('id_screen'); if(s) s.value=''; var sc=document.getElementById('id_schedule'); if(sc) sc.value=''; document.getElementById('filter-form').submit();" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
           {% for t in theaters %}
           <option value="{{ t.id }}" {% if selected_theater and selected_theater.id == t.id %}selected{% endif %}>{{ t.name }} ({{ t.location }})</option>
           {% endfor %}
@@ -104,7 +104,7 @@
 
       <div style="flex: 1; min-width: 200px;">
         <label for="id_screen" style="display: block; font-weight: 600; margin-bottom: 4px;">Screen / Auditorium</label>
-        <select name="screen_id" id="id_screen" onchange="document.getElementById('filter-form').submit();" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+        <select name="screen_id" id="id_screen" onchange="var sc=document.getElementById('id_schedule'); if(sc) sc.value=''; document.getElementById('filter-form').submit();" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
           {% for s in screens %}
           <option value="{{ s.id }}" {% if selected_screen and selected_screen.id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.get_screen_type_display }})</option>
           {% empty %}

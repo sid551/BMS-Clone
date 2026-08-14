@@ -116,6 +116,12 @@
               </select>
             </div>
 
+            <!-- Release Date Filter -->
+            <div class="form-group mb-3">
+              <label class="small font-weight-bold text-muted mb-1">Release Date</label>
+              <input type="date" class="form-control form-control-sm filter-auto-submit" name="release_date" value="{{ selected_release_date }}">
+            </div>
+
             <!-- Show Date Filter -->
             <div class="form-group mb-3">
               <label class="small font-weight-bold text-muted mb-1">Show Date</label>
@@ -209,6 +215,7 @@
               {% if selected_theater %}<input type="hidden" name="theater" value="{{ selected_theater }}">{% endif %}
               {% if selected_status %}<input type="hidden" name="status" value="{{ selected_status }}">{% endif %}
               {% if selected_min_rating %}<input type="hidden" name="min_rating" value="{{ selected_min_rating }}">{% endif %}
+              {% if selected_release_date %}<input type="hidden" name="release_date" value="{{ selected_release_date }}">{% endif %}
               {% if selected_show_date %}<input type="hidden" name="show_date" value="{{ selected_show_date }}">{% endif %}
               {% if selected_time_slot %}<input type="hidden" name="time_slot" value="{{ selected_time_slot }}">{% endif %}
               <select name="sort" class="form-control form-control-sm font-weight-bold text-dark filter-auto-submit">
@@ -267,9 +274,15 @@
               </a>
             {% endif %}
 
+            {% if selected_release_date %}
+              <a href="?{% url_replace release_date='' page=1 %}" class="badge badge-info p-2">
+                Release Date: {{ selected_release_date }} <i class="fas fa-times ml-1"></i>
+              </a>
+            {% endif %}
+
             {% if selected_show_date %}
               <a href="?{% url_replace show_date='' page=1 %}" class="badge badge-info p-2">
-                Date: {{ selected_show_date }} <i class="fas fa-times ml-1"></i>
+                Show Date: {{ selected_show_date }} <i class="fas fa-times ml-1"></i>
               </a>
             {% endif %}
 

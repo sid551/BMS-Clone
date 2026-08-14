@@ -79,6 +79,7 @@ class MovieDiscoveryService:
             'selected_theater': params.get('theater', '').strip(),
             'selected_status': params.get('status', '').strip(),
             'selected_min_rating': params.get('min_rating', '').strip(),
+            'selected_release_date': params.get('release_date', '').strip(),
             'selected_show_date': params.get('show_date', '').strip(),
             'selected_time_slot': params.get('time_slot', '').strip(),
             'sort_by': sort_by,
@@ -137,6 +138,10 @@ class MovieDiscoveryService:
                 qs = qs.filter(rating__gte=rating_val)
             except ValueError:
                 pass
+
+        release_date = params.get('release_date', '').strip()
+        if release_date:
+            qs = qs.filter(release_date=release_date)
 
         show_date = params.get('show_date', '').strip()
         if show_date:

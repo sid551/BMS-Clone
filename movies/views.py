@@ -137,27 +137,28 @@ def book_seats(request, theater_id):
     """
     theater = get_object_or_404(Theater, id=theater_id)
     now = timezone.now()
-
     schedule_id = request.POST.get('schedule_id') or request.GET.get('schedule_id')
 
     schedule = None
     if schedule_id and str(schedule_id).isdigit():
-        schedule = ShowSchedule.objects.filter(id=int(schedule_id)).select_related('movie', 'theater', 'screen').first()
+        schedule = ShowSchedule.objects.filter(
+            id=int(schedule_id),
+            show_time__gte=now
+        ).select_related('movie', 'theater', 'screen').first()
 
     if not schedule:
-        schedule = ShowSchedule.objects.filter(theater=theater, show_time__gte=now).select_related('movie', 'theater', 'screen').order_by('show_time').first()
+        schedule = ShowSchedule.objects.filter(
+            theater=theater,
+            show_time__gte=now
+        ).select_related('movie', 'theater', 'screen').order_by('show_time').first()
 
     if not schedule:
-        schedule = ShowSchedule.objects.filter(theater=theater).select_related('movie', 'theater', 'screen').order_by('-show_time').first()
+        schedule = ShowSchedule.objects.filter(
+            show_time__gte=now
+        ).select_related('movie', 'theater', 'screen').order_by('show_time').first()
 
     if not schedule:
-        schedule = ShowSchedule.objects.filter(show_time__gte=now).select_related('movie', 'theater', 'screen').order_by('show_time').first()
-
-    if not schedule:
-        schedule = ShowSchedule.objects.order_by('-show_time').select_related('movie', 'theater', 'screen').first()
-
-    if not schedule:
-        messages.error(request, 'No show schedules available in the system. Please create a schedule in Admin.')
+        messages.error(request, 'The requested show timing has already passed and is no longer available.')
         return redirect('movie_list')
 
     # If POST request with selected seats -> Reserve & Launch Razorpay Checkout

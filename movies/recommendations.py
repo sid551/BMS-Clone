@@ -11,39 +11,47 @@ from .models import Movie
 def get_similar_movies(movie, limit=6):
     """
     Movies sharing the same genres and/or languages as the given movie.
-    Ranked by number of matching genres (descending), then release date (descending).
+    Ranked by number of matching genres (descending), then rating, then release date.
+    If fewer matching movies exist, tops up with other top-rated movies.
     Excludes the current movie.
     """
+    if not movie:
+        return []
+
     genre_ids = list(movie.genres.values_list('id', flat=True))
     language_ids = list(movie.languages.values_list('id', flat=True))
 
-    if not genre_ids and not language_ids:
-        return Movie.objects.none()
+    qs = Movie.objects.exclude(pk=movie.pk)
 
-    cache_key = f'rec_similar_{movie.pk}_{limit}'
-    movie_ids = cache.get(cache_key)
-
-    if movie_ids is None:
-        qs = (
-            Movie.objects
-            .exclude(pk=movie.pk)
-            .filter(
-                Q(genres__in=genre_ids) | Q(languages__in=language_ids)
-            )
+    similar_list = []
+    if genre_ids or language_ids:
+        matching_qs = (
+            qs.filter(Q(genres__in=genre_ids) | Q(languages__in=language_ids))
             .annotate(match_count=Count('genres', filter=Q(genres__in=genre_ids)))
-            .order_by('-match_count', '-release_date')
-            .distinct()[:limit]
+            .order_by('-match_count', '-rating', '-release_date', '-id')
+            .prefetch_related('genres', 'languages')
+            .distinct()
         )
-        movie_ids = list(qs.values_list('id', flat=True))
-        cache.set(cache_key, movie_ids, 180)
+        similar_list = list(matching_qs[:limit])
 
-    return Movie.objects.filter(pk__in=movie_ids).prefetch_related('genres', 'languages')
+    # Top up with fallback movies if matching count is below limit
+    if len(similar_list) < limit:
+        already_ids = {m.pk for m in similar_list} | {movie.pk}
+        fallback_qs = list(
+            qs.exclude(pk__in=already_ids)
+            .order_by('-rating', '-release_date', '-id')
+            .prefetch_related('genres', 'languages')
+            .distinct()[:(limit - len(similar_list))]
+        )
+        similar_list.extend(fallback_qs)
+
+    return similar_list[:limit]
 
 
-def get_trending_movies(exclude_ids=None, limit=10):
+def get_trending_movies(exclude_ids=None, limit=6):
     """
-    Top-rated movies ordered by rating desc, then by total confirmed bookings desc.
-    Optionally exclude a set/list of movie IDs.
+    Top-rated movies ordered by rating desc, booking count desc, release date desc.
+    Optionally excludes a set/list of movie IDs.
     """
     exclude_ids = exclude_ids or set()
     qs = (
@@ -55,31 +63,27 @@ def get_trending_movies(exclude_ids=None, limit=10):
                 filter=Q(schedules__bookings__status__in=['confirmed', 'completed'])
             )
         )
-        .order_by('-rating', '-booking_count', '-release_date')
+        .order_by('-rating', '-booking_count', '-release_date', '-id')
         .prefetch_related('genres', 'languages')
         .distinct()[:limit]
     )
     return list(qs)
 
 
-def get_recently_released(exclude_ids=None, limit=10):
+def get_recently_released(exclude_ids=None, limit=6):
     """
-    Latest released movies ordered by release_date descending.
-    Excludes movies with no release date.
-    Optionally exclude a list of movie IDs.
+    Latest released movies ordered by release_date descending, then id descending.
+    Optionally excludes a set/list of movie IDs.
     """
-    cache_key = f'rec_recent_{limit}'
-    movie_ids = cache.get(cache_key)
-
-    if movie_ids is None:
-        qs = Movie.objects.filter(release_date__isnull=False).order_by('-release_date')[:limit]
-        movie_ids = list(qs.values_list('id', flat=True))
-        cache.set(cache_key, movie_ids, 180)
-
-    qs_result = Movie.objects.filter(pk__in=movie_ids).prefetch_related('genres')
-    if exclude_ids:
-        qs_result = qs_result.exclude(pk__in=exclude_ids)
-    return qs_result[:limit]
+    exclude_ids = exclude_ids or set()
+    qs = (
+        Movie.objects
+        .exclude(pk__in=exclude_ids)
+        .order_by('-release_date', '-id')
+        .prefetch_related('genres', 'languages')
+        .distinct()[:limit]
+    )
+    return list(qs)
 
 
 def get_personalized_recommendations(user, request=None, limit=6):
@@ -145,7 +149,7 @@ def get_personalized_recommendations(user, request=None, limit=6):
                 .annotate(
                     genre_matches=Count('genres', filter=Q(genres__name__in=pref_genres)) if pref_genres else Count('id')
                 )
-                .order_by('-genre_matches', '-rating', '-release_date')
+                .order_by('-genre_matches', '-rating', '-release_date', '-id')
                 .prefetch_related('genres', 'languages')
                 .distinct()[:limit]
             )
@@ -159,4 +163,3 @@ def get_personalized_recommendations(user, request=None, limit=6):
         recommendations.extend(trending_fallback)
 
     return recommendations[:limit]
-

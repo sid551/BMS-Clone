@@ -95,7 +95,11 @@ def send_email_via_brevo(to_email, to_name, subject, html_body, text_body, attac
             logger.info(f'[BREVO SUCCESS] Email sent to {to_email} — {info_str}')
             return True, info_str
         else:
-            err_msg = f'Brevo API HTTP {resp.status_code}: {resp.text}'
+            err_text = resp.text
+            if 'sending platform' in err_text.lower() or 'disabled' in err_text.lower():
+                err_msg = 'Brevo sending platform is disabled. Activate transactional emails at app.brevo.com -> Transactional -> Settings.'
+            else:
+                err_msg = f'Brevo API HTTP {resp.status_code}: {err_text}'
             logger.error(f'[BREVO ERROR] {err_msg}')
             return False, err_msg
     except Exception as e:

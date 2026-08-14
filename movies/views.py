@@ -88,59 +88,6 @@ def movie_list(request):
     return render(request, 'movies/movie_list.html', context)
 
 
-def movie_detail(request, movie_id):
-    now = timezone.now()
-    movie = get_object_or_404(Movie, id=movie_id)
-
-    # Track recently viewed movie in user session
-    recently_viewed = request.session.get('recently_viewed_movies', [])
-    if movie_id in recently_viewed:
-        recently_viewed.remove(movie_id)
-    recently_viewed.insert(0, movie_id)
-    request.session['recently_viewed_movies'] = recently_viewed[:10]
-    request.session.modified = True
-
-    schedules = (
-        ShowSchedule.objects
-        .filter(movie=movie, show_time__gte=now)
-        .select_related('theater', 'screen')
-        .order_by('show_time')
-    )
-
-    # Group schedules by theater name for the template
-    schedules_by_theater = {}
-    for s in schedules:
-        key = s.theater.name
-        schedules_by_theater.setdefault(key, []).append(s)
-
-    cast = movie.cast_members.select_related() if hasattr(movie, 'cast_members') else []
-    gallery = MovieImage.objects.filter(movie=movie) if MovieImage else []
-    reviews = Review.objects.filter(movie=movie).select_related('user').order_by('-created_at')
-
-    # Build movie_meta string (genres, languages, duration, etc.)
-    parts = []
-    if hasattr(movie, 'genres') and movie.genres.exists():
-        parts.append(', '.join(g.name for g in movie.genres.all()))
-    if hasattr(movie, 'languages') and movie.languages.exists():
-        parts.append(', '.join(l.name for l in movie.languages.all()))
-    if hasattr(movie, 'duration_minutes') and movie.duration_minutes:
-        parts.append(f"{movie.duration_minutes} min")
-    movie_meta = ' | '.join(parts)
-
-    from .recommendations import get_recommended_movies
-    recommended_movies = get_recommended_movies(movie, limit=4)
-
-    return render(request, 'movies/movie_detail.html', {
-        'movie': movie,
-        'schedules': schedules,
-        'schedules_by_theater': schedules_by_theater,
-        'cast': cast,
-        'gallery': gallery,
-        'reviews': reviews,
-        'movie_meta': movie_meta,
-        'recommended_movies': recommended_movies,
-    })
-
 
 def theater_list(request, movie_id):
     """
@@ -1000,6 +947,14 @@ def admin_manage_movies(request):
 @staff_or_admin_required
 def admin_movie_form(request, movie_id=None):
     movie = get_object_or_404(Movie, id=movie_id) if movie_id else None
+
+    # Handle quick gallery poster deletion if requested from movie edit form
+    if request.method == 'POST' and 'delete_gallery_id' in request.POST and movie:
+        del_id = request.POST.get('delete_gallery_id')
+        MovieImage.objects.filter(id=del_id, movie=movie).delete()
+        messages.success(request, 'Gallery poster deleted successfully.')
+        return redirect('admin_movie_edit', movie_id=movie.id)
+
     if request.method == 'POST':
         form = MovieForm(request.POST, request.FILES, instance=movie)
         if form.is_valid():
@@ -1023,6 +978,15 @@ def admin_movie_form(request, movie_id=None):
                 for c_name in [c.strip() for c in cast_names.split(',') if c.strip()]:
                     CastMember.objects.get_or_create(movie=saved_movie, name=c_name, defaults={'role': 'actor'})
 
+            # Process Multi-Poster / Gallery Images Upload
+            gallery_files = request.FILES.getlist('gallery_images')
+            if gallery_files:
+                uploaded_count = 0
+                for img_file in gallery_files:
+                    MovieImage.objects.create(movie=saved_movie, image=img_file, caption=f"Poster {saved_movie.images.count() + 1}")
+                    uploaded_count += 1
+                messages.info(request, f'Uploaded {uploaded_count} additional gallery poster(s).')
+
             messages.success(request, f'Movie "{saved_movie.title}" saved successfully.')
             return redirect('admin_manage_movies')
     else:
@@ -1031,6 +995,7 @@ def admin_movie_form(request, movie_id=None):
     genres = movie.genres.all() if movie else []
     languages = movie.languages.all() if movie else []
     cast_members = movie.cast.all() if movie else []
+    gallery_images = movie.images.all() if movie else []
 
     return render(request, 'movies/custom_admin/movie_form.html', {
         'form': form,
@@ -1038,7 +1003,9 @@ def admin_movie_form(request, movie_id=None):
         'movie_genres': genres,
         'movie_languages': languages,
         'movie_cast': cast_members,
+        'gallery_images': gallery_images,
     })
+
 
 
 @staff_or_admin_required
@@ -1853,15 +1820,18 @@ def admin_movie_gallery(request, movie_id):
     movie = get_object_or_404(Movie, id=movie_id)
     if request.method == 'POST':
         if 'add_image' in request.POST:
-            image_file = request.FILES.get('image')
+            image_files = request.FILES.getlist('image')
             caption = request.POST.get('caption', '')
-            if image_file:
-                MovieImage.objects.create(movie=movie, image=image_file, caption=caption)
-                messages.success(request, 'Gallery image added.')
+            if image_files:
+                count = 0
+                for img_file in image_files:
+                    MovieImage.objects.create(movie=movie, image=img_file, caption=caption or f"Poster {movie.images.count() + 1}")
+                    count += 1
+                messages.success(request, f'{count} gallery poster(s) added successfully.')
         elif 'delete_image_id' in request.POST:
             image_id = request.POST.get('delete_image_id')
             MovieImage.objects.filter(id=image_id, movie=movie).delete()
-            messages.success(request, 'Gallery image deleted.')
+            messages.success(request, 'Gallery poster deleted.')
 
         return redirect('admin_movie_gallery', movie_id=movie.id)
 

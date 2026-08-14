@@ -8,7 +8,7 @@ A full-stack, enterprise-grade movie ticket booking and cinema management platfo
 
 ### 🍿 1. User Experience & Catalog Exploration
 - **Dynamic Content Discovery**: Filter movies by Status (*Now Showing*, *Upcoming*, *Ended*), Age Certification (*U*, *U/A*, *U/A 13+*, *A*), Genre, and Language.
-- **Rich Movie Pages**: Embedded YouTube trailers, high-resolution poster gallery, cast & crew details, duration formatting, and customer ratings.
+- **Rich Movie Pages & Multi-Poster Support**: Embedded YouTube trailers, high-resolution primary poster + multi-poster gallery uploader, cast & crew details, duration formatting, and customer ratings.
 - **Multi-Screen Theater Support**: Browse movie showtimes across venues and screen formats (2D, 3D, IMAX 3D, 4DX, Dolby Atmos).
 
 ### 🎟️ 2. Interactive Seating & Real-Time Hold Locks
@@ -52,7 +52,7 @@ A full-stack, enterprise-grade movie ticket booking and cinema management platfo
   - **Peak Booking Hours**: Hourly sales distribution analysis using `ExtractHour`.
   - **User Registration Trends**: Growth metrics grouped by `TruncMonth`.
 - **Low-Memory Streaming CSV Exports**: Chunked database streaming exports via `StreamingHttpResponse` and `iterator(chunk_size=2000)` for handling datasets of 100,000+ bookings.
-- **Full Catalog CRUD**: Comprehensive management for Movies, Theaters, Screens, Schedules, Bookings, Seats, Taxonomies (Genres, Languages, Cast), and User Reports.
+- **Full Catalog CRUD & Multi-Poster Uploader**: Comprehensive management for Movies (with multi-poster gallery uploads directly inside movie forms), Theaters, Screens, Schedules, Bookings, Seats, Taxonomies (Genres, Languages, Cast), and User Reports.
 
 ---
 

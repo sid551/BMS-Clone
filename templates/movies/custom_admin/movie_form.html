@@ -67,15 +67,53 @@
 
           <!-- Right Column: Poster & Movie-Specific Taxonomies -->
           <div class="col-lg-5 border-left pl-lg-4">
-            <!-- Poster -->
+            <!-- Primary Poster -->
             <div class="form-group mb-4">
-              <label class="font-weight-bold text-dark small">Movie Poster Graphic</label>
+              <label class="font-weight-bold text-dark small">Primary Movie Poster Graphic</label>
               {% if movie and movie.poster_url %}
                 <div class="mb-2 text-center bg-light p-2 rounded border">
                   <img src="{{ movie.poster_url }}" class="img-fluid rounded shadow-sm" style="max-height: 140px;">
                 </div>
               {% endif %}
               {{ form.poster }}
+            </div>
+
+            <!-- Multi-Poster & Gallery Images Section -->
+            <div class="form-group mb-4 p-3 bg-light rounded border border-primary">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="font-weight-bold text-primary small mb-0">
+                  <i class="fas fa-images mr-1"></i> Multi-Poster &amp; Gallery Images
+                </label>
+                {% if movie %}
+                  <a href="{% url 'admin_movie_gallery' movie.id %}" class="btn btn-xs btn-outline-info font-weight-bold">
+                    <i class="fas fa-external-link-alt mr-1"></i> Full Gallery Manager
+                  </a>
+                {% endif %}
+              </div>
+              <p class="text-muted small mb-2" style="font-size: 11px;">
+                Upload multiple additional posters or promotional stills for this movie at once. You can select multiple image files.
+              </p>
+              <input type="file" name="gallery_images" multiple class="form-control-file mb-3" accept="image/*">
+
+              {% if gallery_images %}
+                <label class="font-weight-bold text-dark small mb-1">Uploaded Posters &amp; Stills ({{ gallery_images.count }}):</label>
+                <div class="d-flex flex-wrap" style="gap: 8px;">
+                  {% for img in gallery_images %}
+                    <div class="position-relative text-center border rounded p-1 bg-white" style="width: 80px;">
+                      <img src="{{ img.image_url }}" class="img-fluid rounded mb-1" style="height: 60px; object-fit: cover; width: 100%;">
+                      <form method="post" class="d-inline" onsubmit="return confirm('Delete this gallery poster?')">
+                        {% csrf_token %}
+                        <input type="hidden" name="delete_gallery_id" value="{{ img.id }}">
+                        <button type="submit" class="btn btn-xs btn-danger p-0 px-1" title="Delete poster" style="font-size: 10px;">
+                          <i class="fas fa-trash"></i> Delete
+                        </button>
+                      </form>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <span class="text-muted small d-block" style="font-size: 11px;">No additional posters uploaded yet. Select files above to attach multiple posters.</span>
+              {% endif %}
             </div>
 
             <!-- Genres Field (Movie-Specific) -->

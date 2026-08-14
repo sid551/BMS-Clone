@@ -43,30 +43,23 @@ def get_similar_movies(movie, limit=6):
 def get_trending_movies(exclude_ids=None, limit=10):
     """
     Top-rated movies ordered by rating desc, then by total confirmed bookings desc.
-    Optionally exclude a list of movie IDs.
+    Optionally exclude a set/list of movie IDs.
     """
-    cache_key = f'rec_trending_{limit}'
-    movie_ids = cache.get(cache_key)
-
-    if movie_ids is None:
-        qs = (
-            Movie.objects
-            .annotate(
-                booking_count=Count(
-                    'booking',
-                    filter=Q(booking__status__in=['confirmed', 'completed'])
-                )
+    exclude_ids = exclude_ids or set()
+    qs = (
+        Movie.objects
+        .exclude(pk__in=exclude_ids)
+        .annotate(
+            booking_count=Count(
+                'schedules__bookings',
+                filter=Q(schedules__bookings__status__in=['confirmed', 'completed'])
             )
-            .order_by('-rating', '-booking_count', '-release_date')
-            .distinct()[:limit]
         )
-        movie_ids = list(qs.values_list('id', flat=True))
-        cache.set(cache_key, movie_ids, 180)
-
-    qs_result = Movie.objects.filter(pk__in=movie_ids).prefetch_related('genres')
-    if exclude_ids:
-        qs_result = qs_result.exclude(pk__in=exclude_ids)
-    return qs_result[:limit]
+        .order_by('-rating', '-booking_count', '-release_date')
+        .prefetch_related('genres', 'languages')
+        .distinct()[:limit]
+    )
+    return list(qs)
 
 
 def get_recently_released(exclude_ids=None, limit=10):
@@ -99,16 +92,15 @@ def get_personalized_recommendations(user, request=None, limit=6):
     """
     from .models import Booking, Genre, Language
 
-    if not user or not user.is_authenticated:
-        return []
-
-    # 1. Fetch user's booked movie IDs
-    booked_movie_ids = list(
-        Booking.objects
-        .filter(user=user, status__in=['confirmed', 'completed', 'pending'])
-        .values_list('movie_id', flat=True)
-        .distinct()
-    )
+    # 1. Fetch user's booked movie IDs if authenticated
+    booked_movie_ids = []
+    if user and user.is_authenticated:
+        booked_movie_ids = list(
+            Booking.objects
+            .filter(user=user, status__in=['confirmed', 'completed', 'pending'])
+            .values_list('movie_id', flat=True)
+            .distinct()
+        )
 
     # 2. Fetch session recently viewed movie IDs
     recently_viewed_ids = []

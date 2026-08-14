@@ -63,10 +63,8 @@ class MovieDiscoveryService:
             if k not in ['page', 'sort'] and v.strip() != ''
         )
 
-        # Retrieve personalized recommendations for authenticated users
-        recommended_movies = []
-        if request.user.is_authenticated:
-            recommended_movies = get_personalized_recommendations(request.user, request=request, limit=6)
+        # Retrieve personalized recommendations based on booking history & session recently viewed movies
+        recommended_movies = get_personalized_recommendations(request.user if hasattr(request, 'user') else None, request=request, limit=6)
 
         return {
             'movies': page_obj.object_list,

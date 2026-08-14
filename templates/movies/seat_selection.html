@@ -281,9 +281,15 @@
       function tick() {
         if (seconds <= 0) {
           clearInterval(countdownInterval);
-          timerCountdown.textContent = 'Expired';
-          alert('Your seat reservation has expired! Please select seats again.');
-          window.location.reload();
+          showPopupModal({
+            title: 'Reservation Expired',
+            message: 'Your 2-minute seat reservation hold has expired! Please select seats again to proceed.',
+            type: 'warning',
+            confirmText: 'Select Seats Again',
+            onConfirm: function() {
+              window.location.reload();
+            }
+          });
           return;
         }
         var m = Math.floor(seconds / 60);

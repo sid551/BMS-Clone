@@ -270,10 +270,120 @@
       </div>
     </footer>
 
+    <!-- Global App Notification & Confirmation Popup Modal -->
+    <div class="modal fade" id="appNotificationModal" tabindex="-1" role="dialog" aria-labelledby="appNotificationModalTitle" aria-hidden="true" style="z-index: 1060;">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden;">
+          <div id="appModalHeader" class="modal-header text-white py-3 border-0 bg-primary">
+            <h5 class="modal-title font-weight-bold d-flex align-items-center" id="appNotificationModalTitle">
+              <i id="appModalIcon" class="fas fa-info-circle mr-2"></i>
+              <span id="appModalTitleText">Notification</span>
+            </h5>
+            <button type="button" class="close text-white opacity-75" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body p-4" id="appNotificationModalBody" style="font-size: 15px; color: #334155; line-height: 1.6;">
+            <!-- Dynamic Popup Message Body -->
+          </div>
+          <div class="modal-footer bg-light border-0 py-3 d-flex justify-content-end" id="appModalFooter">
+            <button type="button" id="appModalCancelBtn" class="btn btn-outline-secondary font-weight-bold px-4" data-dismiss="modal" style="display: none;">Cancel</button>
+            <button type="button" id="appModalConfirmBtn" class="btn btn-primary font-weight-bold px-4" data-dismiss="modal">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Bootstrap JS Dependencies -->
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+
+    <script>
+      /**
+       * Replaces native browser alert() with a clean, responsive Popup Modal.
+       */
+      window.showPopupModal = function(options) {
+        var title = options.title || 'Notification';
+        var message = options.message || '';
+        var type = options.type || 'info'; // info, success, warning, danger
+        var isConfirm = options.isConfirm || false;
+        var confirmText = options.confirmText || (isConfirm ? 'Proceed' : 'OK');
+        var cancelText = options.cancelText || 'Cancel';
+        var onConfirm = options.onConfirm || null;
+        var onCancel = options.onCancel || null;
+
+        var header = document.getElementById('appModalHeader');
+        var icon = document.getElementById('appModalIcon');
+        var titleText = document.getElementById('appModalTitleText');
+        var body = document.getElementById('appNotificationModalBody');
+        var confirmBtn = document.getElementById('appModalConfirmBtn');
+        var cancelBtn = document.getElementById('appModalCancelBtn');
+
+        if (!header || !body) return;
+
+        titleText.textContent = title;
+        body.innerHTML = message;
+        confirmBtn.textContent = confirmText;
+        cancelBtn.textContent = cancelText;
+
+        // Reset styles
+        header.className = 'modal-header py-3 border-0';
+        confirmBtn.className = 'btn font-weight-bold px-4';
+
+        if (type === 'success') {
+          header.classList.add('bg-success', 'text-white');
+          icon.className = 'fas fa-check-circle mr-2';
+          confirmBtn.classList.add('btn-success');
+        } else if (type === 'danger' || type === 'error') {
+          header.classList.add('bg-danger', 'text-white');
+          icon.className = 'fas fa-exclamation-circle mr-2';
+          confirmBtn.classList.add('btn-danger');
+        } else if (type === 'warning') {
+          header.classList.add('bg-warning', 'text-dark');
+          icon.className = 'fas fa-exclamation-triangle mr-2';
+          confirmBtn.classList.add('btn-warning', 'text-dark');
+        } else {
+          header.classList.add('bg-primary', 'text-white');
+          icon.className = 'fas fa-info-circle mr-2';
+          confirmBtn.classList.add('btn-primary');
+        }
+
+        if (isConfirm) {
+          cancelBtn.style.display = 'inline-block';
+        } else {
+          cancelBtn.style.display = 'none';
+        }
+
+        // Unbind previous event handlers
+        var newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        var newCancelBtn = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+        newConfirmBtn.addEventListener('click', function() {
+          if (typeof onConfirm === 'function') onConfirm();
+        });
+
+        newCancelBtn.addEventListener('click', function() {
+          if (typeof onCancel === 'function') onCancel();
+        });
+
+        if (typeof $ !== 'undefined') {
+          $('#appNotificationModal').modal('show');
+        }
+      };
+
+      // Override native browser alert with professional Popup Modal
+      window.alert = function(msg) {
+        window.showPopupModal({
+          title: 'Message',
+          message: msg,
+          type: 'warning'
+        });
+      };
+    </script>
 
     {% block extra_js %}{% endblock %}
   </body>

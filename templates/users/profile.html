@@ -132,11 +132,9 @@
                     {% endif %}
                     {% endif %}
                   </td>
-                  <td>
-                    {% if b.status == 'confirmed' %}
-                    <form method="POST" action="{% url 'cancel_booking' b.booking_reference %}" onsubmit="return confirm('PVR Cinemas Cancellation Policy:\n• 2+ hours before show: 75% refund\n• 20 mins to 2 hours before show: 50% refund\n• Under 20 mins: Non-refundable\n\nAre you sure you want to cancel booking {{ b.booking_reference }}?');">
+                    <form method="POST" action="{% url 'cancel_booking' b.booking_reference %}" id="cancel-form-{{ b.booking_reference }}">
                       {% csrf_token %}
-                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel Booking & Refund">
+                      <button type="button" class="btn btn-sm btn-outline-danger" title="Cancel Booking & Refund" onclick="promptCancellationModal('{{ b.booking_reference }}', '{{ b.total_price }}')">
                         <i class="fas fa-ban mr-1"></i> Cancel &amp; Refund
                       </button>
                     </form>
@@ -300,4 +298,25 @@
       {% endfor %}
     </ul>
   </div> -->
+<script>
+  function promptCancellationModal(ref, price) {
+    if (typeof showPopupModal === 'function') {
+      showPopupModal({
+        title: 'Confirm Booking Cancellation',
+        message: '<div class="alert alert-warning border-warning mb-3" style="font-size: 13px;"><strong><i class="fas fa-shield-alt mr-1"></i> PVR Cinemas Cancellation Policy:</strong><ul class="mb-0 pl-3 mt-1"><li><strong>2+ hours before show:</strong> 75% refund</li><li><strong>20 mins to 2 hours before show:</strong> 50% refund</li><li><strong>Under 20 mins:</strong> Non-refundable</li></ul></div><p class="mb-0 text-dark font-weight-bold">Are you sure you want to cancel booking <span class="text-danger">' + ref + '</span> (Original Total: &#8377;' + price + ')?</p>',
+        type: 'danger',
+        isConfirm: true,
+        confirmText: 'Yes, Cancel & Refund',
+        cancelText: 'Keep My Booking',
+        onConfirm: function() {
+          var form = document.getElementById('cancel-form-' + ref);
+          if (form) form.submit();
+        }
+      });
+    } else if (confirm('Are you sure you want to cancel booking ' + ref + '?')) {
+      var form = document.getElementById('cancel-form-' + ref);
+      if (form) form.submit();
+    }
+  }
+</script>
 {% endblock %}

@@ -5,85 +5,91 @@
 {% block admin_content %}
 <div class="container-fluid p-0">
 
-  <!-- Header & Title Bar -->
-  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+  <!-- Header & Action Bar -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
       <h3 class="font-weight-bold text-dark mb-1">
         <i class="fas fa-chart-line text-primary mr-2"></i>Business Analytics Dashboard
       </h3>
       <p class="text-muted small mb-0">Real-time revenue metrics, theater occupancy, booking trends, and system performance.</p>
     </div>
-    <div class="mt-2 mt-sm-0 d-flex align-items-center flex-wrap">
+    <div class="d-flex align-items-center flex-wrap gap-2">
       <!-- Global CSV Exporter Dropdown -->
-      <div class="dropdown d-inline-block mr-2 mb-1">
+      <div class="dropdown d-inline-block">
         <button class="btn btn-outline-success btn-sm font-weight-bold dropdown-toggle shadow-sm" type="button" id="exportCsvDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
           <i class="fas fa-file-csv mr-1"></i> Export Reports (CSV)
         </button>
-        <div class="dropdown-menu dropdown-menu-right shadow" aria-labelledby="exportCsvDropdown">
-          <h6 class="dropdown-header text-muted" style="font-size: 10px;">STREAMING CSV EXPORTS</h6>
-          <a class="dropdown-item" href="{% url 'admin_export_csv' %}?report_type=bookings&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-ticket-alt text-primary mr-2"></i> Bookings List (CSV)</a>
-          <a class="dropdown-item" href="{% url 'admin_export_csv' %}?report_type=revenue&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-coins text-warning mr-2"></i> Revenue Aggregations (CSV)</a>
-          <a class="dropdown-item" href="{% url 'admin_export_csv' %}?report_type=trends&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-chart-line text-info mr-2"></i> Booking Trends (CSV)</a>
-          <a class="dropdown-item" href="{% url 'admin_export_csv' %}?report_type=occupancy&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-percent text-success mr-2"></i> Theater Occupancy (CSV)</a>
-          <a class="dropdown-item" href="{% url 'admin_export_csv' %}?report_type=top_movies&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-film text-danger mr-2"></i> Most Booked Movies (CSV)</a>
-          <a class="dropdown-item" href="{% url 'admin_export_csv' %}?report_type=top_theaters&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-building text-primary mr-2"></i> Top Theaters (CSV)</a>
-          <a class="dropdown-item" href="{% url 'admin_export_csv' %}?report_type=peak_hours&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-clock text-warning mr-2"></i> Peak Hours (CSV)</a>
-          <a class="dropdown-item" href="{% url 'admin_export_csv' %}?report_type=cancellations&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-ban text-danger mr-2"></i> Cancellations (CSV)</a>
-          <a class="dropdown-item" href="{% url 'admin_export_csv' %}?report_type=refunds&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-undo text-info mr-2"></i> Refunds (CSV)</a>
-          <a class="dropdown-item" href="{% url 'admin_export_csv' %}?report_type=user_growth&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-user-plus text-success mr-2"></i> User Growth (CSV)</a>
+        <div class="dropdown-menu dropdown-menu-right shadow border-0" aria-labelledby="exportCsvDropdown">
+          <h6 class="dropdown-header text-muted font-weight-bold" style="font-size: 10px; letter-spacing: 1px;">STREAMING CSV EXPORTS</h6>
+          <a class="dropdown-item py-2" href="{% url 'admin_export_csv' %}?report_type=bookings&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-ticket-alt text-primary mr-2"></i> Bookings List (CSV)</a>
+          <a class="dropdown-item py-2" href="{% url 'admin_export_csv' %}?report_type=revenue&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-coins text-warning mr-2"></i> Revenue Aggregations (CSV)</a>
+          <a class="dropdown-item py-2" href="{% url 'admin_export_csv' %}?report_type=trends&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-chart-line text-info mr-2"></i> Booking Trends (CSV)</a>
+          <a class="dropdown-item py-2" href="{% url 'admin_export_csv' %}?report_type=occupancy&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-percent text-success mr-2"></i> Theater Occupancy (CSV)</a>
+          <a class="dropdown-item py-2" href="{% url 'admin_export_csv' %}?report_type=top_movies&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-film text-danger mr-2"></i> Most Booked Movies (CSV)</a>
+          <a class="dropdown-item py-2" href="{% url 'admin_export_csv' %}?report_type=top_theaters&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-building text-primary mr-2"></i> Top Theaters (CSV)</a>
+          <a class="dropdown-item py-2" href="{% url 'admin_export_csv' %}?report_type=peak_hours&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-clock text-warning mr-2"></i> Peak Hours (CSV)</a>
+          <a class="dropdown-item py-2" href="{% url 'admin_export_csv' %}?report_type=cancellations&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-ban text-danger mr-2"></i> Cancellations (CSV)</a>
+          <a class="dropdown-item py-2" href="{% url 'admin_export_csv' %}?report_type=refunds&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-undo text-info mr-2"></i> Refunds (CSV)</a>
+          <a class="dropdown-item py-2" href="{% url 'admin_export_csv' %}?report_type=user_growth&start_date={{ start_date }}&end_date={{ end_date }}"><i class="fas fa-user-plus text-success mr-2"></i> User Growth (CSV)</a>
         </div>
       </div>
 
-      <a href="{% url 'admin_manage_movies' %}" class="btn btn-primary btn-sm font-weight-bold shadow-sm mr-2 mb-1">
+      <a href="{% url 'admin_manage_movies' %}" class="btn btn-primary btn-sm font-weight-bold shadow-sm">
         <i class="fas fa-plus-circle mr-1"></i> Manage Movies
       </a>
-      <a href="{% url 'admin_bulk_schedule_add' %}" class="btn btn-warning btn-sm font-weight-bold text-dark shadow-sm mb-1">
+      <a href="{% url 'admin_bulk_schedule_add' %}" class="btn btn-warning btn-sm font-weight-bold text-dark shadow-sm">
         <i class="fas fa-bolt mr-1"></i> Bulk Schedules
       </a>
     </div>
-  <!-- Admin Credentials & Security Report Banner -->
-  <div class="alert alert-info border-0 shadow-sm mb-4 d-flex align-items-center justify-content-between flex-wrap" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: #f8fafc;">
-    <div class="d-flex align-items-center my-1">
-      <div class="mr-3 text-warning font-weight-bold" style="font-size: 24px;">
-        <i class="fas fa-user-shield"></i>
+  </div>
+
+  <!-- Security & Credentials Banner -->
+  <div class="card shadow-smooth border-0 mb-4 text-white" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+    <div class="card-body p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div class="d-flex align-items-center">
+        <div class="bg-warning text-dark rounded-circle mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px;">
+          <i class="fas fa-user-shield fa-lg"></i>
+        </div>
+        <div>
+          <h6 class="font-weight-bold mb-1 text-white">
+            <i class="fas fa-lock text-success mr-1"></i> Authorized Admin Credentials &amp; Access Guard
+          </h6>
+          <p class="mb-0 small text-white-50">
+            <strong class="text-white">Username:</strong> <code class="bg-dark text-warning px-2 py-0.5 rounded">admin</code> &nbsp;|&nbsp;
+            <strong class="text-white">Password:</strong> <code class="bg-dark text-warning px-2 py-0.5 rounded">admin123</code> &nbsp;|&nbsp;
+            <strong class="text-white">Access Level:</strong> <span class="badge badge-soft-success">Superuser Staff</span>
+          </p>
+        </div>
       </div>
       <div>
-        <h6 class="font-weight-bold mb-1 text-white">
-          <i class="fas fa-lock text-success mr-1"></i> Authorized Admin Credentials Report
-        </h6>
-        <p class="mb-0 small text-white-50">
-          <strong class="text-white">Admin Username:</strong> <code class="bg-dark text-warning px-2 py-1 rounded">admin</code> &nbsp;|&nbsp;
-          <strong class="text-white">Password:</strong> <code class="bg-dark text-warning px-2 py-1 rounded">admin123</code> &nbsp;|&nbsp;
-          <strong class="text-white">Access Level:</strong> <span class="badge badge-success">Superuser Staff</span>
-        </p>
+        <span class="badge badge-light px-3 py-2 text-dark font-weight-bold shadow-sm">
+          <i class="fas fa-shield-alt text-primary mr-1"></i> Django Auth Protected
+        </span>
       </div>
-    </div>
-    <div class="my-1">
-      <span class="badge badge-light px-3 py-2 text-dark font-weight-bold shadow-sm">
-        <i class="fas fa-shield-alt text-primary mr-1"></i> Django Auth Guarded
-      </span>
     </div>
   </div>
 
+  <!-- Global Date Range Filter Component -->
   {% include 'movies/custom_admin/components/_date_filter.html' %}
 
-  <!-- Revenue Breakdown Cards (Daily, Weekly, Monthly, Yearly, Custom Range) -->
+  <!-- Total Revenue Aggregations Grid -->
   <div class="mb-4">
     <div class="d-flex align-items-center justify-content-between mb-2">
-      <h6 class="font-weight-bold text-uppercase text-muted mb-0" style="font-size: 11px; letter-spacing: 1px;">
+      <h6 class="font-weight-bold text-uppercase text-muted mb-0" style="font-size: 0.75rem; letter-spacing: 1px;">
         <i class="fas fa-coins text-warning mr-1"></i> Total Revenue Aggregations
       </h6>
       <a href="{% url 'admin_export_csv' %}?report_type=revenue&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-link text-success p-0 font-weight-bold" style="font-size: 12px;">
         <i class="fas fa-download mr-1"></i> Export Revenue CSV
       </a>
     </div>
+
     <div class="row">
       <!-- Daily Revenue -->
       <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
-        <div class="card shadow-sm border-0 bg-white h-100">
+        <div class="card shadow-smooth border-0 bg-white h-100">
           <div class="card-body p-3">
             <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size: 10px;">Daily Revenue</small>
-            <h5 class="font-weight-bold text-dark mb-0 mt-1">{{ revenue_stats.formatted_daily }}</h5>
+            <h4 class="font-weight-bold text-dark mb-0 mt-1">{{ revenue_stats.formatted_daily }}</h4>
             <small class="text-muted d-block mt-1" style="font-size: 10px;"><i class="fas fa-calendar-day text-info mr-1"></i>Today</small>
           </div>
         </div>
@@ -91,10 +97,10 @@
 
       <!-- Weekly Revenue -->
       <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
-        <div class="card shadow-sm border-0 bg-white h-100">
+        <div class="card shadow-smooth border-0 bg-white h-100">
           <div class="card-body p-3">
             <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size: 10px;">Weekly Revenue</small>
-            <h5 class="font-weight-bold text-dark mb-0 mt-1">{{ revenue_stats.formatted_weekly }}</h5>
+            <h4 class="font-weight-bold text-dark mb-0 mt-1">{{ revenue_stats.formatted_weekly }}</h4>
             <small class="text-muted d-block mt-1" style="font-size: 10px;"><i class="fas fa-calendar-week text-primary mr-1"></i>This Week</small>
           </div>
         </div>
@@ -102,10 +108,10 @@
 
       <!-- Monthly Revenue -->
       <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
-        <div class="card shadow-sm border-0 bg-white h-100">
+        <div class="card shadow-smooth border-0 bg-white h-100">
           <div class="card-body p-3">
             <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size: 10px;">Monthly Revenue</small>
-            <h5 class="font-weight-bold text-dark mb-0 mt-1">{{ revenue_stats.formatted_monthly }}</h5>
+            <h4 class="font-weight-bold text-dark mb-0 mt-1">{{ revenue_stats.formatted_monthly }}</h4>
             <small class="text-muted d-block mt-1" style="font-size: 10px;"><i class="fas fa-calendar-alt text-success mr-1"></i>This Month</small>
           </div>
         </div>
@@ -113,26 +119,26 @@
 
       <!-- Yearly Revenue -->
       <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
-        <div class="card shadow-sm border-0 bg-white h-100">
+        <div class="card shadow-smooth border-0 bg-white h-100">
           <div class="card-body p-3">
             <small class="text-muted font-weight-bold text-uppercase d-block" style="font-size: 10px;">Yearly Revenue</small>
-            <h5 class="font-weight-bold text-dark mb-0 mt-1">{{ revenue_stats.formatted_yearly }}</h5>
+            <h4 class="font-weight-bold text-dark mb-0 mt-1">{{ revenue_stats.formatted_yearly }}</h4>
             <small class="text-muted d-block mt-1" style="font-size: 10px;"><i class="fas fa-calendar text-warning mr-1"></i>This Year</small>
           </div>
         </div>
       </div>
 
-      <!-- Custom Date Range Revenue -->
+      <!-- Custom Date Range Revenue Card -->
       <div class="col-xl-4 col-md-8 col-sm-12 mb-3">
-        <div class="card shadow-sm border-0 text-white h-100" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);">
+        <div class="card shadow-smooth border-0 text-white h-100" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);">
           <div class="card-body p-3 d-flex justify-content-between align-items-center">
             <div>
               <small class="text-white-50 font-weight-bold text-uppercase d-block" style="font-size: 10px;">Selected Date Range Revenue</small>
-              <h4 class="font-weight-bold text-white mb-0 mt-1">{{ revenue_stats.formatted_range }}</h4>
+              <h3 class="font-weight-bold text-white mb-0 mt-1">{{ revenue_stats.formatted_range }}</h3>
               <small class="text-white-50 d-block mt-1" style="font-size: 10px;">
                 <i class="fas fa-filter mr-1"></i>
                 {% if start_date or end_date %}
-                  Filtered Range Output
+                  Filtered Date Range Total
                 {% else %}
                   All-Time Revenue Total
                 {% endif %}
@@ -145,15 +151,15 @@
     </div>
   </div>
 
-  <!-- Operational Core Metric Cards -->
+  <!-- Operational Core Metric Cards (6 Metric Indicators) -->
   <div class="row mb-4">
     <!-- Total Bookings -->
     <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
-      <div class="card card-stat text-white shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #065f46 0%, #10b981 100%);">
+      <div class="card card-stat text-white shadow-smooth border-0 h-100" style="background: linear-gradient(135deg, #065f46 0%, #10b981 100%);">
         <div class="card-body p-3">
           <small class="text-uppercase text-white-50 font-weight-bold d-block" style="font-size: 10px;">Total Bookings</small>
           <h4 class="font-weight-bold mb-0 text-white mt-1">{{ booking_count|default:"0" }}</h4>
-          <small class="text-white-50 mt-1 d-block" style="font-size: 10px;"><i class="fas fa-ticket-alt mr-1"></i>Orders</small>
+          <small class="text-white-50 mt-1 d-block" style="font-size: 10px;"><i class="fas fa-ticket-alt mr-1"></i>Confirmed Orders</small>
           <div class="stat-icon"><i class="fas fa-receipt text-white"></i></div>
         </div>
       </div>
@@ -161,7 +167,7 @@
 
     <!-- Total Users -->
     <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
-      <div class="card card-stat text-white shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #581c87 0%, #8b5cf6 100%);">
+      <div class="card card-stat text-white shadow-smooth border-0 h-100" style="background: linear-gradient(135deg, #581c87 0%, #8b5cf6 100%);">
         <div class="card-body p-3">
           <small class="text-uppercase text-white-50 font-weight-bold d-block" style="font-size: 10px;">Total Users</small>
           <h4 class="font-weight-bold mb-0 text-white mt-1">{{ user_count|default:"0" }}</h4>
@@ -173,7 +179,7 @@
 
     <!-- Total Movies -->
     <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
-      <div class="card card-stat text-white shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #9a3412 0%, #f97316 100%);">
+      <div class="card card-stat text-white shadow-smooth border-0 h-100" style="background: linear-gradient(135deg, #9a3412 0%, #f97316 100%);">
         <div class="card-body p-3">
           <small class="text-uppercase text-white-50 font-weight-bold d-block" style="font-size: 10px;">Total Movies</small>
           <h4 class="font-weight-bold mb-0 text-white mt-1">{{ movie_count|default:"0" }}</h4>
@@ -185,11 +191,11 @@
 
     <!-- Total Theaters -->
     <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
-      <div class="card card-stat text-white shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);">
+      <div class="card card-stat text-white shadow-smooth border-0 h-100" style="background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);">
         <div class="card-body p-3">
           <small class="text-uppercase text-white-50 font-weight-bold d-block" style="font-size: 10px;">Total Theaters</small>
           <h4 class="font-weight-bold mb-0 text-white mt-1">{{ theater_count|default:"0" }}</h4>
-          <small class="text-white-50 mt-1 d-block" style="font-size: 10px;"><i class="fas fa-building mr-1"></i>Venues</small>
+          <small class="text-white-50 mt-1 d-block" style="font-size: 10px;"><i class="fas fa-building mr-1"></i>Active Venues</small>
           <div class="stat-icon"><i class="fas fa-city text-white"></i></div>
         </div>
       </div>
@@ -197,65 +203,63 @@
 
     <!-- Active Shows -->
     <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
-      <div class="card card-stat text-dark shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #ca8a04 0%, #facc15 100%);">
+      <div class="card card-stat text-dark shadow-smooth border-0 h-100" style="background: linear-gradient(135deg, #ca8a04 0%, #facc15 100%);">
         <div class="card-body p-3">
-          <small class="text-uppercase text-dark font-weight-bold d-block" style="font-size: 10px; opacity: 0.8;">Active Shows</small>
+          <small class="text-uppercase text-dark font-weight-bold d-block" style="font-size: 10px; opacity: 0.85;">Active Shows</small>
           <h4 class="font-weight-bold mb-0 text-dark mt-1">{{ active_shows|default:"0" }}</h4>
-          <small class="text-dark mt-1 d-block" style="font-size: 10px; opacity: 0.8;"><i class="fas fa-clock mr-1"></i>Upcoming</small>
+          <small class="text-dark mt-1 d-block" style="font-size: 10px; opacity: 0.85;"><i class="fas fa-clock mr-1"></i>Upcoming</small>
           <div class="stat-icon"><i class="fas fa-calendar-check text-dark"></i></div>
         </div>
       </div>
     </div>
 
-    <!-- Pending Moderation Reports -->
+    <!-- Pending Reports -->
     <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
-      <div class="card card-stat text-white shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #991b1b 0%, #ef4444 100%);">
+      <div class="card card-stat text-white shadow-smooth border-0 h-100" style="background: linear-gradient(135deg, #991b1b 0%, #ef4444 100%);">
         <div class="card-body p-3">
           <small class="text-uppercase text-white-50 font-weight-bold d-block" style="font-size: 10px;">Pending Reports</small>
           <h4 class="font-weight-bold mb-0 text-white mt-1">{{ pending_reports|default:"0" }}</h4>
-          <small class="text-white-50 mt-1 d-block" style="font-size: 10px;"><i class="fas fa-flag mr-1"></i>Reviews</small>
+          <small class="text-white-50 mt-1 d-block" style="font-size: 10px;"><i class="fas fa-flag mr-1"></i>Review Flags</small>
           <div class="stat-icon"><i class="fas fa-exclamation-triangle text-white"></i></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Interactive Charts Section (Chart.js) -->
+  <!-- Interactive Charts Section (Chart.js Visualization) -->
   <div class="row mb-4">
     <!-- Chart 1: Revenue & Booking Trends Over Time -->
     <div class="col-lg-8 mb-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+      <div class="card shadow-smooth border-0 h-100">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
           <h6 class="font-weight-bold mb-0 text-dark">
-            <i class="fas fa-chart-line text-primary mr-2"></i>Booking & Revenue Trends Over Time
+            <i class="fas fa-chart-line text-primary mr-2"></i>Booking &amp; Revenue Trends Over Time
           </h6>
           <div>
-            <a href="{% url 'admin_export_csv' %}?report_type=trends&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-success font-weight-bold mr-2">
-              <i class="fas fa-download mr-1"></i> Export Trends CSV
+            <a href="{% url 'admin_export_csv' %}?report_type=trends&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-xs btn-outline-success font-weight-bold mr-2">
+              <i class="fas fa-download mr-1"></i> Export CSV
             </a>
-            <span class="badge badge-light border text-muted px-2 py-1" style="font-size: 11px;">
-              <i class="fas fa-database mr-1"></i>ORM TruncDate Aggregated
-            </span>
+            <span class="badge badge-soft-primary" style="font-size: 10px;">TruncDate Aggregated</span>
           </div>
         </div>
-        <div class="card-body p-3" style="position: relative; min-height: 280px;">
+        <div class="card-body p-3" style="position: relative; min-height: 300px;">
           <canvas id="bookingTrendsChart"></canvas>
         </div>
       </div>
     </div>
 
-    <!-- Chart 2: Booking Status & Cancellations -->
+    <!-- Chart 2: Booking Status Breakdown -->
     <div class="col-lg-4 mb-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+      <div class="card shadow-smooth border-0 h-100">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
           <h6 class="font-weight-bold mb-0 text-dark">
             <i class="fas fa-chart-pie text-success mr-2"></i>Booking Status Breakdown
           </h6>
-          <a href="{% url 'admin_export_csv' %}?report_type=cancellations&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-success font-weight-bold">
+          <a href="{% url 'admin_export_csv' %}?report_type=cancellations&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-xs btn-outline-success font-weight-bold">
             <i class="fas fa-download mr-1"></i> CSV
           </a>
         </div>
-        <div class="card-body p-3 d-flex align-items-center justify-content-center" style="position: relative; min-height: 280px;">
+        <div class="card-body p-3 d-flex align-items-center justify-content-center" style="position: relative; min-height: 300px;">
           <canvas id="bookingStatusChart"></canvas>
         </div>
       </div>
@@ -263,39 +267,39 @@
 
     <!-- Chart 3: Peak Booking Hours -->
     <div class="col-lg-7 mb-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+      <div class="card shadow-smooth border-0 h-100">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
           <h6 class="font-weight-bold mb-0 text-dark">
-            <i class="fas fa-business-time text-warning mr-2"></i>Peak Booking Hours (Hourly Distribution 0-23)
+            <i class="fas fa-business-time text-warning mr-2"></i>Peak Booking Hours (0-23 Hourly Distribution)
           </h6>
           <div>
-            <a href="{% url 'admin_export_csv' %}?report_type=peak_hours&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-success font-weight-bold mr-2">
-              <i class="fas fa-download mr-1"></i> Export Peak Hours CSV
+            <a href="{% url 'admin_export_csv' %}?report_type=peak_hours&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-xs btn-outline-success font-weight-bold mr-2">
+              <i class="fas fa-download mr-1"></i> Export CSV
             </a>
-            <span class="badge badge-light border text-muted px-2 py-1" style="font-size: 11px;">ExtractHour Query</span>
+            <span class="badge badge-soft-warning" style="font-size: 10px;">ExtractHour Query</span>
           </div>
         </div>
-        <div class="card-body p-3" style="position: relative; min-height: 260px;">
+        <div class="card-body p-3" style="position: relative; min-height: 280px;">
           <canvas id="peakHoursChart"></canvas>
         </div>
       </div>
     </div>
 
-    <!-- Chart 4: User Registration Growth -->
+    <!-- Chart 4: User Growth Trend -->
     <div class="col-lg-5 mb-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+      <div class="card shadow-smooth border-0 h-100">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
           <h6 class="font-weight-bold mb-0 text-dark">
-            <i class="fas fa-user-plus text-info mr-2"></i>User Growth Trend
+            <i class="fas fa-user-plus text-info mr-2"></i>User Registration Growth
           </h6>
           <div>
-            <a href="{% url 'admin_export_csv' %}?report_type=user_growth&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-success font-weight-bold mr-2">
+            <a href="{% url 'admin_export_csv' %}?report_type=user_growth&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-xs btn-outline-success font-weight-bold mr-2">
               <i class="fas fa-download mr-1"></i> CSV
             </a>
-            <span class="badge badge-light border text-muted px-2 py-1" style="font-size: 11px;">TruncMonth Query</span>
+            <span class="badge badge-soft-info" style="font-size: 10px;">TruncMonth Query</span>
           </div>
         </div>
-        <div class="card-body p-3" style="position: relative; min-height: 260px;">
+        <div class="card-body p-3" style="position: relative; min-height: 280px;">
           <canvas id="userGrowthChart"></canvas>
         </div>
       </div>
@@ -304,40 +308,40 @@
 
   <!-- Analytics Leaderboards & Performance Tables -->
   <div class="row mb-4">
-    <!-- Most Booked Movies -->
+    <!-- Most Booked Movies Table -->
     <div class="col-lg-6 mb-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+      <div class="card shadow-smooth border-0 h-100">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
           <h6 class="font-weight-bold mb-0 text-dark">
             <i class="fas fa-trophy text-warning mr-2"></i>Most Booked Movies
           </h6>
           <div>
-            <a href="{% url 'admin_export_csv' %}?report_type=top_movies&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-success font-weight-bold mr-1">
+            <a href="{% url 'admin_export_csv' %}?report_type=top_movies&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-xs btn-outline-success font-weight-bold mr-1">
               <i class="fas fa-download mr-1"></i> CSV
             </a>
-            <a href="{% url 'admin_manage_movies' %}" class="btn btn-sm btn-outline-primary">Manage</a>
+            <a href="{% url 'admin_manage_movies' %}" class="btn btn-xs btn-outline-primary font-weight-bold">Manage</a>
           </div>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
-              <thead class="bg-light text-muted">
+              <thead>
                 <tr>
-                  <th class="border-top-0">Rank</th>
-                  <th class="border-top-0">Movie Title</th>
-                  <th class="border-top-0 text-center">Tickets Sold</th>
-                  <th class="border-top-0 text-center">Bookings</th>
-                  <th class="border-top-0 text-right">Revenue</th>
+                  <th style="width: 50px;">Rank</th>
+                  <th>Movie Title</th>
+                  <th class="text-center">Tickets Sold</th>
+                  <th class="text-center">Bookings</th>
+                  <th class="text-right">Gross Revenue</th>
                 </tr>
               </thead>
               <tbody>
                 {% for m in top_movies %}
                   <tr>
-                    <td class="font-weight-bold text-center" style="width: 40px;">#{{ forloop.counter }}</td>
+                    <td class="font-weight-bold text-center">#{{ forloop.counter }}</td>
                     <td>
                       <div class="d-flex align-items-center">
                         {% if m.poster_url %}
-                          <img src="{{ m.poster_url }}" alt="{{ m.title }}" class="rounded mr-2" style="width: 32px; height: 44px; object-fit: cover;">
+                          <img src="{{ m.poster_url }}" alt="{{ m.title }}" class="rounded mr-2 shadow-sm" style="width: 32px; height: 44px; object-fit: cover;">
                         {% else %}
                           <div class="bg-secondary text-white rounded mr-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 44px; font-size: 10px;">
                             <i class="fas fa-film"></i>
@@ -363,36 +367,36 @@
       </div>
     </div>
 
-    <!-- Top Performing Theaters by Revenue -->
+    <!-- Top Performing Theaters Table -->
     <div class="col-lg-6 mb-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+      <div class="card shadow-smooth border-0 h-100">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
           <h6 class="font-weight-bold mb-0 text-dark">
             <i class="fas fa-building text-success mr-2"></i>Top Performing Theaters
           </h6>
           <div>
-            <a href="{% url 'admin_export_csv' %}?report_type=top_theaters&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-success font-weight-bold mr-1">
+            <a href="{% url 'admin_export_csv' %}?report_type=top_theaters&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-xs btn-outline-success font-weight-bold mr-1">
               <i class="fas fa-download mr-1"></i> CSV
             </a>
-            <a href="{% url 'admin_manage_theaters' %}" class="btn btn-sm btn-outline-success">Manage</a>
+            <a href="{% url 'admin_manage_theaters' %}" class="btn btn-xs btn-outline-success font-weight-bold">Manage</a>
           </div>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
-              <thead class="bg-light text-muted">
+              <thead>
                 <tr>
-                  <th class="border-top-0">Rank</th>
-                  <th class="border-top-0">Theater & Location</th>
-                  <th class="border-top-0 text-center">Tickets Sold</th>
-                  <th class="border-top-0 text-center">Bookings</th>
-                  <th class="border-top-0 text-right">Revenue</th>
+                  <th style="width: 50px;">Rank</th>
+                  <th>Theater Venue</th>
+                  <th class="text-center">Tickets Sold</th>
+                  <th class="text-center">Bookings</th>
+                  <th class="text-right">Gross Revenue</th>
                 </tr>
               </thead>
               <tbody>
                 {% for t in top_theaters %}
                   <tr>
-                    <td class="font-weight-bold text-center" style="width: 40px;">#{{ forloop.counter }}</td>
+                    <td class="font-weight-bold text-center">#{{ forloop.counter }}</td>
                     <td>
                       <div class="font-weight-bold text-dark">{{ t.name }}</div>
                       <small class="text-muted">{{ t.location|default:"Main Venue" }}</small>
@@ -413,31 +417,31 @@
 
     <!-- Theater Occupancy Percentage Table -->
     <div class="col-lg-12 mb-4">
-      <div class="card shadow-sm border-0">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+      <div class="card shadow-smooth border-0">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
           <h6 class="font-weight-bold mb-0 text-dark">
             <i class="fas fa-percent text-info mr-2"></i>Theater Occupancy Percentage Analysis
           </h6>
           <div>
-            <a href="{% url 'admin_export_csv' %}?report_type=occupancy&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-success font-weight-bold mr-2">
-              <i class="fas fa-download mr-1"></i> Export Occupancy CSV
+            <a href="{% url 'admin_export_csv' %}?report_type=occupancy&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-xs btn-outline-success font-weight-bold mr-2">
+              <i class="fas fa-download mr-1"></i> Export CSV
             </a>
-            <span class="badge badge-light border text-muted px-2 py-1" style="font-size: 11px;">
-              ORM Aggregated Occupancy = (Booked Seats / Maximum Capacity) * 100
+            <span class="badge badge-soft-info" style="font-size: 10px;">
+              Occupancy = (Booked Seats / Capacity) * 100
             </span>
           </div>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
-              <thead class="bg-light text-muted">
+              <thead>
                 <tr>
-                  <th class="border-top-0">Theater</th>
-                  <th class="border-top-0 text-center">Total Shows</th>
-                  <th class="border-top-0 text-center">Seats Booked</th>
-                  <th class="border-top-0 text-center">Total Capacity</th>
-                  <th class="border-top-0 text-center">Occupancy Rate (%)</th>
-                  <th class="border-top-0 text-right">Revenue</th>
+                  <th>Theater Venue</th>
+                  <th class="text-center">Total Shows</th>
+                  <th class="text-center">Seats Booked</th>
+                  <th class="text-center">Total Capacity</th>
+                  <th class="text-center" style="min-width: 180px;">Occupancy Rate (%)</th>
+                  <th class="text-right">Revenue</th>
                 </tr>
               </thead>
               <tbody>
@@ -451,14 +455,14 @@
                     <td class="text-center font-weight-bold text-primary">{{ o.booked_seats }}</td>
                     <td class="text-center text-muted">{{ o.total_capacity }}</td>
                     <td class="text-center">
-                      <div class="d-flex align-items-center justify-content-center">
-                        <div class="progress mr-2" style="width: 80px; height: 10px; border-radius: 5px;">
+                      <div class="d-flex align-items-center justify-content-center gap-2">
+                        <div class="progress flex-grow-1" style="height: 8px; border-radius: 4px; background-color: #e2e8f0; min-width: 80px;">
                           <div class="progress-bar {% if o.occupancy_pct >= 70 %}bg-success{% elif o.occupancy_pct >= 40 %}bg-warning{% else %}bg-danger{% endif %}" 
                                role="progressbar" 
-                               data-width="{{ o.occupancy_pct|default:0 }}%" 
+                               data-occupancy="{{ o.occupancy_pct|default:0 }}"
                                aria-valuenow="{{ o.occupancy_pct|default:0 }}" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
-                        <span class="font-weight-bold {% if o.occupancy_pct >= 70 %}text-success{% elif o.occupancy_pct >= 40 %}text-warning{% else %}text-danger{% endif %}">
+                        <span class="font-weight-bold small {% if o.occupancy_pct >= 70 %}text-success{% elif o.occupancy_pct >= 40 %}text-warning{% else %}text-danger{% endif %}">
                           {{ o.occupancy_pct }}%
                         </span>
                       </div>
@@ -475,14 +479,14 @@
       </div>
     </div>
 
-    <!-- Cancellation & Refund Statistics Cards -->
+    <!-- Cancellation Statistics -->
     <div class="col-lg-6 mb-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+      <div class="card shadow-smooth border-0 h-100">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
           <h6 class="font-weight-bold mb-0 text-dark">
             <i class="fas fa-ban text-danger mr-2"></i>Cancellation Statistics
           </h6>
-          <a href="{% url 'admin_export_csv' %}?report_type=cancellations&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-danger font-weight-bold">
+          <a href="{% url 'admin_export_csv' %}?report_type=cancellations&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-xs btn-outline-danger font-weight-bold">
             <i class="fas fa-download mr-1"></i> Export CSV
           </a>
         </div>
@@ -490,7 +494,7 @@
           <div class="row align-items-center">
             <div class="col-md-6 mb-3 mb-md-0 border-right">
               <div class="text-center">
-                <small class="text-muted font-weight-bold text-uppercase" style="font-size: 11px;">Cancellation Rate</small>
+                <small class="text-muted font-weight-bold text-uppercase" style="font-size: 10px;">Cancellation Rate</small>
                 <h2 class="font-weight-bold text-danger mb-0 mt-1">{{ cancellation_stats.cancellation_rate }}%</h2>
                 <small class="text-muted d-block mt-1">
                   {{ cancellation_stats.cancelled_bookings }} of {{ cancellation_stats.total_bookings }} total bookings
@@ -518,14 +522,14 @@
       </div>
     </div>
 
-    <!-- Refund Statistics Cards -->
+    <!-- Refund Statistics -->
     <div class="col-lg-6 mb-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+      <div class="card shadow-smooth border-0 h-100">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
           <h6 class="font-weight-bold mb-0 text-dark">
-            <i class="fas fa-undo-alt text-warning mr-2"></i>Refund & Gateway Audit
+            <i class="fas fa-undo-alt text-warning mr-2"></i>Refund &amp; Gateway Audit
           </h6>
-          <a href="{% url 'admin_export_csv' %}?report_type=refunds&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-warning font-weight-bold">
+          <a href="{% url 'admin_export_csv' %}?report_type=refunds&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-xs btn-outline-warning font-weight-bold">
             <i class="fas fa-download mr-1"></i> Export CSV
           </a>
         </div>
@@ -533,7 +537,7 @@
           <div class="row align-items-center">
             <div class="col-md-6 mb-3 mb-md-0 border-right">
               <div class="text-center">
-                <small class="text-muted font-weight-bold text-uppercase" style="font-size: 11px;">Total Refunded Amount</small>
+                <small class="text-muted font-weight-bold text-uppercase" style="font-size: 10px;">Total Refunded Amount</small>
                 <h2 class="font-weight-bold text-warning mb-0 mt-1">{{ refund_stats.formatted_refunded_amount }}</h2>
                 <small class="text-muted d-block mt-1">
                   {{ refund_stats.refunded_count }} refunded transactions
@@ -562,20 +566,20 @@
     </div>
   </div>
 
-  <!-- Recent System Feeds -->
+  <!-- System Feeds & Recent Activity -->
   <div class="row">
     <!-- Recent System Bookings -->
     <div class="col-lg-7 mb-4 mb-lg-0">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+      <div class="card shadow-smooth border-0 h-100">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
           <h6 class="font-weight-bold mb-0 text-dark">
             <i class="fas fa-ticket-alt text-primary mr-2"></i>Recent System Bookings
           </h6>
           <div>
-            <a href="{% url 'admin_export_csv' %}?report_type=bookings&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-sm btn-outline-success font-weight-bold mr-2">
+            <a href="{% url 'admin_export_csv' %}?report_type=bookings&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-xs btn-outline-success font-weight-bold mr-2">
               <i class="fas fa-file-csv mr-1"></i> Export CSV
             </a>
-            <a href="{% url 'admin_manage_bookings' %}" class="btn btn-sm btn-outline-primary font-weight-bold">
+            <a href="{% url 'admin_manage_bookings' %}" class="btn btn-xs btn-outline-primary font-weight-bold">
               View All <i class="fas fa-arrow-right ml-1"></i>
             </a>
           </div>
@@ -583,13 +587,13 @@
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
-              <thead class="bg-light text-muted">
+              <thead>
                 <tr>
-                  <th class="border-top-0">Reference</th>
-                  <th class="border-top-0">Customer</th>
-                  <th class="border-top-0">Movie / Theater</th>
-                  <th class="border-top-0 text-right">Amount</th>
-                  <th class="border-top-0 text-center">Status</th>
+                  <th>Reference</th>
+                  <th>Customer</th>
+                  <th>Movie / Theater</th>
+                  <th class="text-right">Amount</th>
+                  <th class="text-center">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -604,11 +608,11 @@
                     <td class="text-right font-weight-bold">₹{{ b.total_price }}</td>
                     <td class="text-center">
                       {% if b.status == 'confirmed' %}
-                        <span class="badge badge-success px-2 py-1">Confirmed</span>
+                        <span class="badge badge-soft-success">Confirmed</span>
                       {% elif b.status == 'cancelled' %}
-                        <span class="badge badge-danger px-2 py-1">Cancelled</span>
+                        <span class="badge badge-soft-danger">Cancelled</span>
                       {% else %}
-                        <span class="badge badge-warning px-2 py-1">{{ b.get_status_display }}</span>
+                        <span class="badge badge-soft-warning">{{ b.get_status_display }}</span>
                       {% endif %}
                     </td>
                   </tr>
@@ -624,14 +628,14 @@
       </div>
     </div>
 
-    <!-- Moderation & Flagged Reviews -->
+    <!-- Moderation & Flagged Reviews Feed -->
     <div class="col-lg-5">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+      <div class="card shadow-smooth border-0 h-100">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
           <h6 class="font-weight-bold mb-0 text-dark">
-            <i class="fas fa-flag text-danger mr-2"></i>Moderation & Review Reports
+            <i class="fas fa-flag text-danger mr-2"></i>Moderation &amp; Review Reports
           </h6>
-          <a href="{% url 'admin_manage_reports' %}" class="btn btn-sm btn-outline-danger font-weight-bold">
+          <a href="{% url 'admin_manage_reports' %}" class="btn btn-xs btn-outline-danger font-weight-bold">
             Moderate ({% if pending_reports %}{{ pending_reports }}{% else %}0{% endif %})
           </a>
         </div>
@@ -640,18 +644,18 @@
             {% for r in recent_reports %}
               <li class="list-group-item p-3 border-bottom">
                 <div class="d-flex justify-content-between align-items-start mb-1">
-                  <span class="badge badge-danger font-weight-bold">{{ r.get_reason_display }}</span>
+                  <span class="badge badge-soft-danger font-weight-bold">{{ r.get_reason_display }}</span>
                   <small class="text-muted"><i class="far fa-clock mr-1"></i>{{ r.reported_at|date:"M d, H:i" }}</small>
                 </div>
                 <div class="small text-dark font-weight-bold mb-1">Reported by: {{ r.reported_by.username }}</div>
                 <p class="small text-muted mb-0 text-truncate" style="max-width: 320px;">
-                  "{{ r.review.review_text|default:r.review.title }}"
+                  "{{ r.review.text|default:r.review.title }}"
                 </p>
               </li>
             {% empty %}
-              <li class="list-group-item text-center text-muted py-5">
-                <div class="mb-2"><i class="fas fa-check-circle fa-2x text-success"></i></div>
-                No pending moderation reports!
+              <li class="list-group-item p-4 text-center text-muted small">
+                <i class="fas fa-check-circle text-success fa-2x d-block mb-2"></i>
+                No pending flagged review reports.
               </li>
             {% endfor %}
           </ul>
@@ -659,60 +663,68 @@
       </div>
     </div>
   </div>
-
 </div>
 
-<!-- JSON Data Scripts for Chart.js -->
+<!-- Django json_script tags for passing JSON data safely to JS without linter syntax errors -->
 {{ booking_trends|json_script:"booking-trends-data" }}
 {{ peak_hours|json_script:"peak-hours-data" }}
 {{ user_growth|json_script:"user-growth-data" }}
-{{ cancellation_stats|json_script:"cancellation-stats-data" }}
 
-<!-- Chart.js Visualization Scripts -->
+<!-- ========================================================================= -->
+<!-- CHART.JS VISUALIZATION INITIALIZATION SCRIPTS -->
+<!-- ========================================================================= -->
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // Dynamically apply data-width attributes to progress bars
-    document.querySelectorAll('.progress-bar[data-width]').forEach(function(el) {
-      el.style.width = el.getAttribute('data-width');
+    // Dynamic Occupancy Bar Width initialization
+    document.querySelectorAll('.progress-bar[data-occupancy]').forEach(function(bar) {
+      const pct = parseFloat(bar.getAttribute('data-occupancy')) || 0;
+      bar.style.width = Math.min(100, Math.max(0, pct)) + '%';
     });
 
-    // Safely parse JSON data from Django json_script blocks
+    // Shared Chart.js Defaults
+    Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
+    Chart.defaults.color = "#64748b";
+
+    // Parse JSON Datasets
     const bookingTrendsData = JSON.parse(document.getElementById('booking-trends-data')?.textContent || '[]');
     const peakHoursData = JSON.parse(document.getElementById('peak-hours-data')?.textContent || '[]');
     const userGrowthData = JSON.parse(document.getElementById('user-growth-data')?.textContent || '[]');
-    const cancellationStats = JSON.parse(document.getElementById('cancellation-stats-data')?.textContent || '{}');
 
-    // -------------------------------------------------------------
-    // Chart 1: Booking & Revenue Trends Over Time
-    // -------------------------------------------------------------
-    const trendCtx = document.getElementById('bookingTrendsChart');
-    if (trendCtx) {
-      const labels = bookingTrendsData.map(item => item.label || item.date);
-      const bookingCounts = bookingTrendsData.map(item => item.total_bookings);
-      const revenues = bookingTrendsData.map(item => item.total_revenue);
+    // -------------------------------------------------------------------------
+    // Chart 1: Revenue & Booking Trends Over Time (Line Chart)
+    // -------------------------------------------------------------------------
+    const trendsCtx = document.getElementById('bookingTrendsChart')?.getContext('2d');
+    if (trendsCtx) {
+      const trendsLabels = bookingTrendsData.map(function(t) { return t.day_label; });
+      const trendsBookings = bookingTrendsData.map(function(t) { return t.booking_count; });
+      const trendsRevenue = bookingTrendsData.map(function(t) { return t.daily_revenue; });
 
-      new Chart(trendCtx.getContext('2d'), {
+      new Chart(trendsCtx, {
         type: 'line',
         data: {
-          labels: labels.length > 0 ? labels : ['No Data'],
+          labels: trendsLabels.length ? trendsLabels : ['No Data'],
           datasets: [
             {
-              label: 'Revenue (₹)',
-              data: revenues.length > 0 ? revenues : [0],
-              borderColor: '#3b82f6',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              label: 'Bookings Count',
+              data: trendsBookings.length ? trendsBookings : [0],
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37, 99, 235, 0.08)',
               fill: true,
-              tension: 0.3,
-              yAxisID: 'yRevenue'
+              tension: 0.35,
+              yAxisID: 'yBookings',
+              pointRadius: 4,
+              pointHoverRadius: 6,
             },
             {
-              label: 'Bookings Volume',
-              data: bookingCounts.length > 0 ? bookingCounts : [0],
+              label: 'Revenue (₹)',
+              data: trendsRevenue.length ? trendsRevenue : [0],
               borderColor: '#10b981',
-              backgroundColor: 'rgba(16, 185, 129, 0.1)',
-              fill: false,
-              tension: 0.3,
-              yAxisID: 'yBookings'
+              backgroundColor: 'rgba(16, 185, 129, 0.05)',
+              fill: true,
+              tension: 0.35,
+              yAxisID: 'yRevenue',
+              pointRadius: 4,
+              pointHoverRadius: 6,
             }
           ]
         },
@@ -720,107 +732,128 @@
           responsive: true,
           maintainAspectRatio: false,
           interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
+            tooltip: { padding: 10, cornerRadius: 6 }
+          },
           scales: {
-            yRevenue: {
-              type: 'linear',
-              display: true,
-              position: 'left',
-              title: { display: true, text: 'Revenue (₹)' }
-            },
+            x: { grid: { display: false } },
             yBookings: {
               type: 'linear',
               display: true,
+              position: 'left',
+              title: { display: true, text: 'Bookings Count', color: '#2563eb', font: { weight: 'bold', size: 11 } },
+              grid: { color: '#f1f5f9' },
+              beginAtZero: true,
+            },
+            yRevenue: {
+              type: 'linear',
+              display: true,
               position: 'right',
-              grid: { drawOnChartArea: false },
-              title: { display: true, text: 'Bookings Count' }
+              title: { display: true, text: 'Revenue (₹)', color: '#10b981', font: { weight: 'bold', size: 11 } },
+              grid: { display: false },
+              beginAtZero: true,
             }
           }
         }
       });
     }
 
-    // -------------------------------------------------------------
+    // -------------------------------------------------------------------------
     // Chart 2: Booking Status Breakdown (Doughnut Chart)
-    // -------------------------------------------------------------
-    const statusCtx = document.getElementById('bookingStatusChart');
+    // -------------------------------------------------------------------------
+    const statusCtx = document.getElementById('bookingStatusChart')?.getContext('2d');
     if (statusCtx) {
-      const confirmed = cancellationStats.confirmed_bookings || 0;
-      const cancelled = cancellationStats.cancelled_bookings || 0;
-      const pending = cancellationStats.pending_bookings || 0;
-
-      new Chart(statusCtx.getContext('2d'), {
+      new Chart(statusCtx, {
         type: 'doughnut',
         data: {
           labels: ['Confirmed', 'Cancelled', 'Pending'],
           datasets: [{
-            data: [confirmed, cancelled, pending],
+            data: [
+              parseInt('{{ status_breakdown.confirmed|default:0 }}') || 0,
+              parseInt('{{ status_breakdown.cancelled|default:0 }}') || 0,
+              parseInt('{{ status_breakdown.pending|default:0 }}') || 0
+            ],
             backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
-            borderWidth: 2
+            borderWidth: 2,
+            borderColor: '#ffffff',
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'bottom' }
-          }
+            legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } }
+          },
+          cutout: '70%',
         }
       });
     }
 
-    // -------------------------------------------------------------
-    // Chart 3: Peak Booking Hours Distribution (Bar Chart)
-    // -------------------------------------------------------------
-    const peakCtx = document.getElementById('peakHoursChart');
+    // -------------------------------------------------------------------------
+    // Chart 3: Peak Booking Hours (Bar Chart)
+    // -------------------------------------------------------------------------
+    const peakCtx = document.getElementById('peakHoursChart')?.getContext('2d');
     if (peakCtx) {
-      const hourLabels = peakHoursData.map(item => item.label);
-      const hourCounts = peakHoursData.map(item => item.booking_count);
+      const peakLabels = peakHoursData.map(function(p) { return p.hour_label; });
+      const peakCounts = peakHoursData.map(function(p) { return p.booking_count; });
 
-      new Chart(peakCtx.getContext('2d'), {
+      new Chart(peakCtx, {
         type: 'bar',
         data: {
-          labels: hourLabels,
+          labels: peakLabels.length ? peakLabels : ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
           datasets: [{
-            label: 'Bookings Created',
-            data: hourCounts,
+            label: 'Bookings Volume',
+            data: peakCounts.length ? peakCounts : [0, 0, 0, 0, 0, 0],
             backgroundColor: '#f59e0b',
-            borderRadius: 4
+            borderRadius: 4,
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
           scales: {
-            y: { beginAtZero: true, ticks: { precision: 0 } }
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, grid: { color: '#f1f5f9' } }
           }
         }
       });
     }
 
-    // -------------------------------------------------------------
-    // Chart 4: User Growth Trend (Line / Bar Chart)
-    // -------------------------------------------------------------
-    const growthCtx = document.getElementById('userGrowthChart');
+    // -------------------------------------------------------------------------
+    // Chart 4: User Registration Growth (Line Chart)
+    // -------------------------------------------------------------------------
+    const growthCtx = document.getElementById('userGrowthChart')?.getContext('2d');
     if (growthCtx) {
-      const growthLabels = userGrowthData.map(item => item.period);
-      const growthCounts = userGrowthData.map(item => item.new_users);
+      const growthLabels = userGrowthData.map(function(u) { return u.month_label; });
+      const growthCounts = userGrowthData.map(function(u) { return u.user_count; });
 
-      new Chart(growthCtx.getContext('2d'), {
-        type: 'bar',
+      new Chart(growthCtx, {
+        type: 'line',
         data: {
-          labels: growthLabels.length > 0 ? growthLabels : ['Current Month'],
+          labels: growthLabels.length ? growthLabels : ['No Data'],
           datasets: [{
-            label: 'New Registered Users',
-            data: growthCounts.length > 0 ? growthCounts : [0],
-            backgroundColor: '#06b6d4',
-            borderRadius: 4
+            label: 'New Registrations',
+            data: growthCounts.length ? growthCounts : [0],
+            borderColor: '#0284c7',
+            backgroundColor: 'rgba(2, 132, 199, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
           scales: {
-            y: { beginAtZero: true, ticks: { precision: 0 } }
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, grid: { color: '#f1f5f9' } }
           }
         }
       });

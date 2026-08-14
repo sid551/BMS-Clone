@@ -56,11 +56,10 @@ def profile(request):
         .order_by('-created_at')
     )
 
-    # Pre-compute ticket URLs and seat lists in Python to avoid N+1 and slow Cloudinary calls in template
     bookings = []
     for booking in bookings_qs:
-        # Seat list
-        booked_seats = booking.booked_seats.all()
+        # Fast in-memory seat string computation
+        booked_seats = list(booking.booked_seats.all())
         if booked_seats:
             seat_str = ', '.join(bs.seat.seat_number for bs in booked_seats)
         elif booking.seat_id:
@@ -68,29 +67,12 @@ def profile(request):
         else:
             seat_str = f'{booking.number_of_seats} seat{"s" if booking.number_of_seats != 1 else ""}'
 
-        # Auto-trigger ticket email dispatch if booking is confirmed and email remains pending
-        if booking.status == 'confirmed' and booking.email_status == 'pending' and booking.email_attempts == 0:
-            try:
-                from movies.tasks import send_ticket_email_task
-                send_ticket_email_task(booking.id)
-                booking.refresh_from_db()
-            except Exception:
-                pass
-
-        # Ticket URL / Download availability — confirmed bookings can stream ticket on-the-fly
-        ticket_url = None
         has_ticket = bool((booking.ticket and booking.ticket.name) or booking.ticket_pdf_data or booking.status == 'confirmed')
-        if booking.ticket and booking.ticket.name:
-            try:
-                ticket_url = booking.ticket.url
-            except Exception:
-                ticket_url = None
 
         bookings.append({
             'obj': booking,
             'seat_str': seat_str,
             'has_ticket': has_ticket,
-            'ticket_url': ticket_url,
         })
 
     if request.method == 'POST':

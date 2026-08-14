@@ -82,7 +82,7 @@ def send_email_via_brevo(to_email, to_name, subject, html_body, text_body, attac
                 'Accept': 'application/json',
             },
             json=payload,
-            timeout=12,
+            timeout=3.5,
         )
         if resp.status_code in (200, 201):
             msg_id = ""
@@ -148,7 +148,7 @@ def send_email_via_mailersend(to_email, to_name, subject, html_body, text_body, 
                 'X-Requested-With': 'XMLHttpRequest',
             },
             json=payload,
-            timeout=12,
+            timeout=3.5,
         )
         if resp.status_code in (200, 201, 202):
             logger.info(f'[MAILERSEND SUCCESS] Email sent to {to_email}')
@@ -167,6 +167,7 @@ def send_email_via_resend(to_email, to_name, subject, html_body, text_body, atta
     """
     Fallback Transport: Resend REST API (HTTPS Port 443 — Vercel Serverless Compatible).
     Endpoint: POST https://api.resend.com/emails
+    Note: Free testing mode on Resend restricts recipient email to account owner's email address.
     """
     api_key = os.environ.get('RESEND_API_KEY', '')
     if not api_key:
@@ -204,14 +205,18 @@ def send_email_via_resend(to_email, to_name, subject, html_body, text_body, atta
                 'Content-Type': 'application/json',
             },
             json=payload,
-            timeout=12,
+            timeout=3.5,
         )
         if resp.status_code in (200, 201):
             logger.info(f'[RESEND SUCCESS] Email sent to {to_email}')
             return True, f'Resend HTTP {resp.status_code} OK'
         else:
-            err_msg = f'Resend HTTP {resp.status_code}: {resp.text}'
-            logger.error(f'[RESEND ERROR] {err_msg}')
+            err_text = resp.text
+            if 'validation_error' in err_text or 'testing mode' in err_text:
+                err_msg = 'Resend free testing mode restricts recipient to your account owner email. Verify a domain at https://resend.com/domains or configure BREVO_API_KEY for unrestricted delivery to any recipient.'
+            else:
+                err_msg = f'Resend HTTP {resp.status_code}: {err_text}'
+            logger.warning(f'[RESEND RESTRICTION] {err_msg}')
             return False, err_msg
     except Exception as e:
         err_msg = f'Resend HTTP request failed: {e}'

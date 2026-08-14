@@ -201,8 +201,9 @@ def send_ticket_email_task(self, booking_id):
             attachments=attachments,
         )
 
-    # Priority 4: Standard Django Email Backend Fallback (Console/SMTP/LocMem)
-    if not success:
+    # Priority 4: Standard Django Email Backend Fallback (Console/SMTP)
+    # NOTE: Raw TCP SMTP is blocked on Vercel. Skip SMTP if running on Vercel to prevent socket timeouts.
+    if not success and not os.environ.get('VERCEL'):
         try:
             email_msg = EmailMultiAlternatives(
                 subject=subject,
@@ -224,6 +225,9 @@ def send_ticket_email_task(self, booking_id):
             logger.error(f"Django email dispatch failed for booking {booking.booking_reference}: {mail_err}")
             mail_err_msg = str(mail_err)
             success = False
+    elif not success and os.environ.get('VERCEL'):
+        mail_err_msg = 'SMTP port 587 is blocked on Vercel serverless. Configure BREVO_API_KEY in Vercel Environment Variables for HTTPS REST API email delivery.'
+        logger.warning(f"[VERCEL SKIPPED SMTP] {mail_err_msg}")
 
     if success:
         booking.email_status = 'sent'
@@ -357,7 +361,7 @@ def send_refund_email_task(self, booking_id, refund_amount=0, refund_percentage=
             text_body=text_body,
         )
 
-    if not success:
+    if not success and not os.environ.get('VERCEL'):
         try:
             email_msg = EmailMultiAlternatives(
                 subject=subject,
@@ -371,6 +375,8 @@ def send_refund_email_task(self, booking_id, refund_amount=0, refund_percentage=
         except Exception as mail_err:
             logger.error(f"Django email dispatch failed for refund {booking.booking_reference}: {mail_err}")
             success = False
+    elif not success and os.environ.get('VERCEL'):
+        logger.warning(f"[VERCEL SKIPPED SMTP] SMTP is blocked on Vercel serverless. Configure BREVO_API_KEY for HTTPS REST API email delivery.")
 
     return success
 

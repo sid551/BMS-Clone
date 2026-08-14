@@ -381,3 +381,31 @@ def send_refund_email_task(self, booking_id, refund_amount=0, refund_percentage=
     return success
 
 
+@shared_task
+def retry_failed_booking_emails_task(max_batch=10):
+    """
+    Automated background task to retry sending failed or pending booking ticket emails.
+    Automatically retries bookings where email_status in ('failed', 'pending') and email_attempts < 5.
+    """
+    failed_bookings = (
+        Booking.objects
+        .filter(status='confirmed', email_status__in=['failed', 'pending'], email_attempts__lt=5)
+        .order_by('booked_at')[:max_batch]
+    )
+
+    retried_count = 0
+    success_count = 0
+
+    for booking in failed_bookings:
+        retried_count += 1
+        try:
+            success = send_ticket_email_task(booking.id)
+            if success:
+                success_count += 1
+        except Exception as e:
+            logger.error(f"Automated email retry error for booking {booking.booking_reference}: {e}")
+
+    logger.info(f"Automated email retry batch completed: {success_count}/{retried_count} emails delivered successfully.")
+    return {'retried': retried_count, 'successful': success_count}
+
+

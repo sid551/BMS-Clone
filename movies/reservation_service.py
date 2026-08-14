@@ -233,22 +233,26 @@ def confirm_booking(user, schedule_id):
     # Sync available seats on the schedule
     schedule.sync_available_seats()
 
-    # Generate PDF ticket and dispatch email task AFTER transaction commits
-    # Using on_commit ensures the booking is fully saved before Celery reads it
+    # Generate PDF ticket and dispatch email task in background daemon thread AFTER transaction commits
+    # Using daemon thread guarantees HTTP booking response returns INSTANTLY without waiting for email delivery
     def _dispatch_ticket_email():
+        import threading
         from .ticket_service import generate_and_save_ticket
         from .tasks import send_ticket_email_task
-        try:
-            generate_and_save_ticket(booking)
-        except Exception:
-            pass  # ticket gen failure never rolls back the booking
-        try:
-            # .delay() is non-blocking — HTTP response returns immediately
-            # With ALWAYS_EAGER=True (no broker), runs synchronously but
-            # EAGER_PROPAGATES=False means exceptions are swallowed
-            send_ticket_email_task.delay(booking.pk)
-        except Exception:
-            pass  # email dispatch failure never affects the booking
+
+        def _bg_ticket_worker():
+            try:
+                generate_and_save_ticket(booking)
+            except Exception:
+                pass
+            try:
+                # Dispatch ticket email (retries automatically on failure)
+                send_ticket_email_task(booking.pk)
+            except Exception:
+                pass
+
+        t = threading.Thread(target=_bg_ticket_worker, daemon=True)
+        t.start()
 
     transaction.on_commit(_dispatch_ticket_email)
 

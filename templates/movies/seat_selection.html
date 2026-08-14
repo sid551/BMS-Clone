@@ -130,7 +130,11 @@
               </div>
               <div class="d-flex align-items-center mx-3 mb-2">
                 <span class="legend-box selected mr-2"></span>
-                <small class="font-weight-bold">Selected</small>
+                <small class="font-weight-bold">Selected / Held</small>
+              </div>
+              <div class="d-flex align-items-center mx-3 mb-2">
+                <span class="legend-box reserved-other mr-2"></span>
+                <small class="font-weight-bold text-danger">Reserved by Others</small>
               </div>
               <div class="d-flex align-items-center mx-3 mb-2">
                 <span class="legend-box sold mr-2"></span>
@@ -213,6 +217,12 @@
     cursor: not-allowed;
     text-decoration: line-through;
   }
+  .seat-item.reserved-other {
+    background-color: #fff4e6 !important;
+    color: #d9480f !important;
+    border-color: #ffd8a8 !important;
+    cursor: not-allowed !important;
+  }
   .seat-checkbox:checked + .seat-label {
     background-color: #28a745 !important;
     color: #ffffff !important;
@@ -231,6 +241,7 @@
   }
   .legend-box.available { background-color: #ffffff; border: 1px solid #ced4da; }
   .legend-box.selected { background-color: #28a745; }
+  .legend-box.reserved-other { background-color: #fff4e6; border: 1px solid #ffd8a8; }
   .legend-box.sold { background-color: #e9ecef; border: 1px solid #dee2e6; }
 </style>
 
@@ -405,27 +416,38 @@
             updateAvailableSeatsDisplay(mySelectedCount);
           }
 
-          var unavailableSeatIds = [];
+          var bookedSeatIds = [];
+          var reservedOtherSeatIds = [];
           for (var r in data.rows) {
             data.rows[r].forEach(function(s) {
-              if (s.is_booked || s.is_reserved_by_other || s.status === 'booked' || (s.status === 'reserved' && !s.is_mine)) {
-                unavailableSeatIds.push(s.seat_id);
+              if (s.is_booked || s.status === 'booked') {
+                bookedSeatIds.push(s.seat_id);
+              } else if (s.is_reserved_by_other || (s.status === 'reserved' && !s.is_mine)) {
+                reservedOtherSeatIds.push(s.seat_id);
               }
             });
           }
           checkboxes.forEach(function(cb) {
             var seatId = parseInt(cb.value);
             var label = document.querySelector('label[for="' + cb.id + '"]');
-            if (unavailableSeatIds.indexOf(seatId) !== -1 && !cb.checked) {
+            if (bookedSeatIds.indexOf(seatId) !== -1 && !cb.checked) {
               cb.disabled = true;
               if (label) {
                 label.classList.add('sold');
+                label.classList.remove('reserved-other');
                 label.style.pointerEvents = 'none';
               }
-            } else if (cb.disabled) {
+            } else if (reservedOtherSeatIds.indexOf(seatId) !== -1 && !cb.checked) {
+              cb.disabled = true;
+              if (label) {
+                label.classList.add('reserved-other');
+                label.classList.remove('sold');
+                label.style.pointerEvents = 'none';
+              }
+            } else if (cb.disabled && !cb.checked) {
               cb.disabled = false;
               if (label) {
-                label.classList.remove('sold');
+                label.classList.remove('sold', 'reserved-other');
                 label.style.pointerEvents = 'auto';
               }
             }

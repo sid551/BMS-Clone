@@ -247,3 +247,131 @@ def send_ticket_email_task(self, booking_id):
         booking.save(update_fields=['email_status', 'email_attempts', 'email_last_error', 'updated_at'])
         raise self.retry(exc=Exception(err_msg), countdown=30)
 
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=5)
+def send_refund_email_task(self, booking_id, refund_amount=0, refund_percentage=100, policy_notes=''):
+    """
+    Celery background task to send refund confirmation email asynchronously to the user.
+    """
+    try:
+        booking = Booking.objects.select_related(
+            'user', 'movie', 'theater',
+            'show_schedule__movie', 'show_schedule__theater', 'show_schedule__screen'
+        ).get(pk=booking_id)
+    except Booking.DoesNotExist:
+        logger.error(f"Refund email task failed: Booking {booking_id} does not exist.")
+        return False
+
+    recipient_email = booking.user.email if booking.user else ""
+    if not recipient_email:
+        logger.warning(f"Booking {booking.booking_reference}: No recipient email address.")
+        return False
+
+    movie = booking.movie or (booking.show_schedule.movie if booking.show_schedule else None)
+    theater = booking.theater or (booking.show_schedule.theater if booking.show_schedule else None)
+    movie_title = movie.title if movie else "Movie Ticket"
+    theater_name = theater.name if theater else "Theater"
+
+    subject = f"Refund Processed — Booking {booking.booking_reference} ({movie_title})"
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'tickets@bookmyshow.com')
+
+    refund_str = f"INR {float(refund_amount):,.2f}"
+
+    text_body = (
+        f"Hello {booking.user.get_full_name() or booking.user.username},\n\n"
+        f"Your booking cancellation request for '{movie_title}' at {theater_name} has been processed.\n\n"
+        f"Booking Reference: {booking.booking_reference}\n"
+        f"Refund Amount: {refund_str} ({refund_percentage}% refund tier)\n"
+        f"Cancellation Policy Notes: {policy_notes}\n"
+        f"Original Booking Total: INR {booking.total_price:,.2f}\n\n"
+        f"The refund has been initiated back to your original payment method.\n"
+        f"Thank you for choosing BookMyShow!"
+    )
+
+    html_body = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+      <div style="background-color: #dc2626; color: #ffffff; padding: 20px; text-align: center;">
+        <h2 style="margin: 0;">Refund &amp; Cancellation Processed</h2>
+        <p style="margin: 5px 0 0 0;">Ref: <strong>{booking.booking_reference}</strong></p>
+      </div>
+      <div style="padding: 24px; color: #1f2937;">
+        <p>Dear <strong>{booking.user.get_full_name() or booking.user.username}</strong>,</p>
+        <p>Your booking cancellation request has been successfully processed according to cinema policy rules. Below are your refund details:</p>
+        
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <tr style="border-bottom: 1px solid #f3f4f6;"><td style="padding: 8px 0; color: #4b5563; font-weight: bold;">Movie:</td><td style="padding: 8px 0; font-weight: bold; color: #111827;">{movie_title}</td></tr>
+          <tr style="border-bottom: 1px solid #f3f4f6;"><td style="padding: 8px 0; color: #4b5563; font-weight: bold;">Theater:</td><td style="padding: 8px 0;">{theater_name}</td></tr>
+          <tr style="border-bottom: 1px solid #f3f4f6;"><td style="padding: 8px 0; color: #4b5563; font-weight: bold;">Booking Reference:</td><td style="padding: 8px 0; font-weight: bold;">{booking.booking_reference}</td></tr>
+          <tr style="border-bottom: 1px solid #f3f4f6;"><td style="padding: 8px 0; color: #4b5563; font-weight: bold;">Original Amount:</td><td style="padding: 8px 0;">INR {booking.total_price:,.2f}</td></tr>
+          <tr style="border-bottom: 1px solid #f3f4f6;"><td style="padding: 8px 0; color: #4b5563; font-weight: bold;">Refund Tier:</td><td style="padding: 8px 0; font-weight: bold; color: #dc2626;">{refund_percentage}% Refund Tier</td></tr>
+          <tr><td style="padding: 8px 0; color: #4b5563; font-weight: bold;">Refund Processed:</td><td style="padding: 8px 0; font-weight: bold; color: #059669; font-size: 18px;">{refund_str}</td></tr>
+        </table>
+
+        <div style="background-color: #fef2f2; padding: 15px; border-radius: 6px; border: 1px solid #fecaca; margin-top: 20px;">
+          <p style="margin: 0; font-size: 13px; color: #991b1b;">
+            <strong>Policy Details:</strong> {policy_notes}
+          </p>
+        </div>
+      </div>
+      <div style="background-color: #f3f4f6; color: #6b7280; padding: 12px; text-align: center; font-size: 12px;">
+        BookMyShow &bull; Automated Refund Notification System
+      </div>
+    </div>
+    """
+
+    import os
+    from .brevo_service import (
+        send_email_via_brevo,
+        send_email_via_mailersend,
+        send_email_via_resend,
+    )
+
+    success = False
+    mail_err_msg = None
+
+    if getattr(settings, 'BREVO_API_KEY', '') or os.environ.get('BREVO_API_KEY', ''):
+        success, mail_err_msg = send_email_via_brevo(
+            to_email=recipient_email,
+            to_name=booking.user.get_full_name() or booking.user.username,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+            tag=f"refund_{booking.booking_reference}",
+        )
+
+    if not success and os.environ.get('MAILERSEND_API_KEY', ''):
+        success, mail_err_msg = send_email_via_mailersend(
+            to_email=recipient_email,
+            to_name=booking.user.get_full_name() or booking.user.username,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+        )
+
+    if not success and os.environ.get('RESEND_API_KEY', ''):
+        success, mail_err_msg = send_email_via_resend(
+            to_email=recipient_email,
+            to_name=booking.user.get_full_name() or booking.user.username,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+        )
+
+    if not success:
+        try:
+            email_msg = EmailMultiAlternatives(
+                subject=subject,
+                body=text_body,
+                from_email=from_email,
+                to=[recipient_email],
+            )
+            email_msg.attach_alternative(html_body, "text/html")
+            email_msg.send(fail_silently=False)
+            success = True
+        except Exception as mail_err:
+            logger.error(f"Django email dispatch failed for refund {booking.booking_reference}: {mail_err}")
+            success = False
+
+    return success
+
+

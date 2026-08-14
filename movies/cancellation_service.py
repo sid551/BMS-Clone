@@ -132,6 +132,29 @@ def cancel_booking_and_process_refund(booking: Booking, cancelled_by=None, reaso
         })
         payment.save(update_fields=['status', 'gateway_response', 'updated_at'])
 
+    # Step 5: Dispatch Refund Email Notification after transaction commits
+    def _dispatch_refund_email():
+        from .tasks import send_refund_email_task
+        try:
+            send_refund_email_task.delay(
+                booking_id=booking.pk,
+                refund_amount=float(refund_amount),
+                refund_percentage=pct,
+                policy_notes=policy_desc
+            )
+        except Exception:
+            try:
+                send_refund_email_task(
+                    booking_id=booking.pk,
+                    refund_amount=float(refund_amount),
+                    refund_percentage=pct,
+                    policy_notes=policy_desc
+                )
+            except Exception:
+                pass
+
+    transaction.on_commit(_dispatch_refund_email)
+
     return {
         'success': True,
         'booking_reference': booking.booking_reference,

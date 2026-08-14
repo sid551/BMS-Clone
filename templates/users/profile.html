@@ -131,7 +131,8 @@
                     </a>
                     {% endif %}
                     {% endif %}
-                  </td>
+                  <td>
+                    {% if b.status == 'confirmed' %}
                     <form method="POST" action="{% url 'cancel_booking' b.booking_reference %}" id="cancel-form-{{ b.booking_reference }}">
                       {% csrf_token %}
                       <button type="button" class="btn btn-sm btn-outline-danger" title="Cancel Booking & Refund" onclick="promptCancellationModal('{{ b.booking_reference }}', '{{ b.total_price }}')">

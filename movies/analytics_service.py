@@ -409,10 +409,19 @@ def get_user_growth_reports(start_dt=None, end_dt=None):
                 'period': p_str,
                 'new_users': item['new_users'],
             })
+
+        if not result:
+            now = timezone.now()
+            tot_users = User.objects.count()
+            result = [{
+                'period': now.strftime('%b %Y'),
+                'new_users': tot_users,
+            }]
+
         return result
     except Exception as e:
         logger.error(f"Error in get_user_growth_reports: {e}")
-        return []
+        return [{'period': timezone.now().strftime('%b %Y'), 'new_users': 0}]
 
 
 def get_full_admin_analytics(start_date_str='', end_date_str=''):
@@ -474,6 +483,7 @@ def get_full_admin_analytics(start_date_str='', end_date_str=''):
         'cancellation_stats': cancellation_stats,
         'refund_stats': refund_stats,
         'user_growth': user_growth,
+        'user_growth_reports': user_growth,
 
         # Recent Feeds
         'recent_movies': recent_movies,

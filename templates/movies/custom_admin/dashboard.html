@@ -668,7 +668,7 @@
 <!-- Django json_script tags for passing JSON data safely to JS without linter syntax errors -->
 {{ booking_trends|json_script:"booking-trends-data" }}
 {{ peak_hours|json_script:"peak-hours-data" }}
-{{ user_growth_reports|json_script:"user-growth-data" }}
+{{ user_growth|default:user_growth_reports|json_script:"user-growth-data" }}
 
 <!-- ========================================================================= -->
 <!-- CHART.JS VISUALIZATION INITIALIZATION SCRIPTS -->

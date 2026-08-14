@@ -242,7 +242,7 @@
             <span class="badge badge-soft-primary" style="font-size: 10px;">TruncDate Aggregated</span>
           </div>
         </div>
-        <div class="card-body p-3" style="position: relative; min-height: 300px;">
+        <div class="card-body p-3" style="position: relative; height: 320px; width: 100%;">
           <canvas id="bookingTrendsChart"></canvas>
         </div>
       </div>
@@ -259,7 +259,7 @@
             <i class="fas fa-download mr-1"></i> CSV
           </a>
         </div>
-        <div class="card-body p-3 d-flex align-items-center justify-content-center" style="position: relative; min-height: 300px;">
+        <div class="card-body p-3 d-flex align-items-center justify-content-center" style="position: relative; height: 320px; width: 100%;">
           <canvas id="bookingStatusChart"></canvas>
         </div>
       </div>
@@ -279,7 +279,7 @@
             <span class="badge badge-soft-warning" style="font-size: 10px;">ExtractHour Query</span>
           </div>
         </div>
-        <div class="card-body p-3" style="position: relative; min-height: 280px;">
+        <div class="card-body p-3" style="position: relative; height: 280px; width: 100%;">
           <canvas id="peakHoursChart"></canvas>
         </div>
       </div>
@@ -299,7 +299,7 @@
             <span class="badge badge-soft-info" style="font-size: 10px;">TruncMonth Query</span>
           </div>
         </div>
-        <div class="card-body p-3" style="position: relative; min-height: 280px;">
+        <div class="card-body p-3" style="position: relative; height: 280px; width: 100%;">
           <canvas id="userGrowthChart"></canvas>
         </div>
       </div>
@@ -668,7 +668,7 @@
 <!-- Django json_script tags for passing JSON data safely to JS without linter syntax errors -->
 {{ booking_trends|json_script:"booking-trends-data" }}
 {{ peak_hours|json_script:"peak-hours-data" }}
-{{ user_growth|json_script:"user-growth-data" }}
+{{ user_growth_reports|json_script:"user-growth-data" }}
 
 <!-- ========================================================================= -->
 <!-- CHART.JS VISUALIZATION INITIALIZATION SCRIPTS -->
@@ -682,10 +682,12 @@
     });
 
     // Shared Chart.js Defaults
-    Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
-    Chart.defaults.color = "#64748b";
+    if (typeof Chart !== 'undefined') {
+      Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
+      Chart.defaults.color = "#64748b";
+    }
 
-    // Parse JSON Datasets
+    // Parse JSON Datasets safely
     const bookingTrendsData = JSON.parse(document.getElementById('booking-trends-data')?.textContent || '[]');
     const peakHoursData = JSON.parse(document.getElementById('peak-hours-data')?.textContent || '[]');
     const userGrowthData = JSON.parse(document.getElementById('user-growth-data')?.textContent || '[]');
@@ -694,15 +696,15 @@
     // Chart 1: Revenue & Booking Trends Over Time (Line Chart)
     // -------------------------------------------------------------------------
     const trendsCtx = document.getElementById('bookingTrendsChart')?.getContext('2d');
-    if (trendsCtx) {
-      const trendsLabels = bookingTrendsData.map(function(t) { return t.day_label; });
-      const trendsBookings = bookingTrendsData.map(function(t) { return t.booking_count; });
-      const trendsRevenue = bookingTrendsData.map(function(t) { return t.daily_revenue; });
+    if (trendsCtx && typeof Chart !== 'undefined') {
+      const trendsLabels = bookingTrendsData.map(function(t) { return t.label || t.date || ''; });
+      const trendsBookings = bookingTrendsData.map(function(t) { return t.total_bookings || 0; });
+      const trendsRevenue = bookingTrendsData.map(function(t) { return t.total_revenue || 0; });
 
       new Chart(trendsCtx, {
         type: 'line',
         data: {
-          labels: trendsLabels.length ? trendsLabels : ['No Data'],
+          labels: trendsLabels.length ? trendsLabels : ['Today'],
           datasets: [
             {
               label: 'Bookings Count',
@@ -763,17 +765,17 @@
     // Chart 2: Booking Status Breakdown (Doughnut Chart)
     // -------------------------------------------------------------------------
     const statusCtx = document.getElementById('bookingStatusChart')?.getContext('2d');
-    if (statusCtx) {
+    if (statusCtx && typeof Chart !== 'undefined') {
+      const confirmedCnt = parseInt('{{ cancellation_stats.confirmed_bookings|default:0 }}') || 0;
+      const cancelledCnt = parseInt('{{ cancellation_stats.cancelled_bookings|default:0 }}') || 0;
+      const pendingCnt = parseInt('{{ cancellation_stats.pending_bookings|default:0 }}') || 0;
+
       new Chart(statusCtx, {
         type: 'doughnut',
         data: {
           labels: ['Confirmed', 'Cancelled', 'Pending'],
           datasets: [{
-            data: [
-              parseInt('{{ status_breakdown.confirmed|default:0 }}') || 0,
-              parseInt('{{ status_breakdown.cancelled|default:0 }}') || 0,
-              parseInt('{{ status_breakdown.pending|default:0 }}') || 0
-            ],
+            data: [confirmedCnt, cancelledCnt, pendingCnt],
             backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
             borderWidth: 2,
             borderColor: '#ffffff',
@@ -794,9 +796,9 @@
     // Chart 3: Peak Booking Hours (Bar Chart)
     // -------------------------------------------------------------------------
     const peakCtx = document.getElementById('peakHoursChart')?.getContext('2d');
-    if (peakCtx) {
-      const peakLabels = peakHoursData.map(function(p) { return p.hour_label; });
-      const peakCounts = peakHoursData.map(function(p) { return p.booking_count; });
+    if (peakCtx && typeof Chart !== 'undefined') {
+      const peakLabels = peakHoursData.map(function(p) { return p.label || ''; });
+      const peakCounts = peakHoursData.map(function(p) { return p.booking_count || 0; });
 
       new Chart(peakCtx, {
         type: 'bar',
@@ -827,9 +829,9 @@
     // Chart 4: User Registration Growth (Line Chart)
     // -------------------------------------------------------------------------
     const growthCtx = document.getElementById('userGrowthChart')?.getContext('2d');
-    if (growthCtx) {
-      const growthLabels = userGrowthData.map(function(u) { return u.month_label; });
-      const growthCounts = userGrowthData.map(function(u) { return u.user_count; });
+    if (growthCtx && typeof Chart !== 'undefined') {
+      const growthLabels = userGrowthData.map(function(u) { return u.period || ''; });
+      const growthCounts = userGrowthData.map(function(u) { return u.new_users || 0; });
 
       new Chart(growthCtx, {
         type: 'line',

@@ -4,85 +4,156 @@
 
 {% block admin_content %}
 <div class="container-fluid p-0">
-  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+
+  <!-- Header & Page Actions -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
       <h3 class="font-weight-bold text-dark mb-1">
-        <i class="fas fa-film text-warning mr-2"></i>Manage Movies
+        <i class="fas fa-film text-warning mr-2"></i>Movie Management Panel
       </h3>
-      <p class="text-muted small mb-0">View, edit, filter, and add movies to the BookMySeat catalog.</p>
+      <p class="text-muted small mb-0">Manage movie details, posters, trailers, genres, languages, cast, and gallery assets.</p>
     </div>
-    <a href="{% url 'admin_movie_add' %}" class="btn btn-primary font-weight-bold shadow-sm mt-2 mt-sm-0">
-      <i class="fas fa-plus mr-1"></i> Add New Movie
-    </a>
+    <div>
+      <a href="{% url 'admin_movie_add' %}" class="btn btn-primary font-weight-bold shadow-sm">
+        <i class="fas fa-plus mr-1"></i> Add New Movie
+      </a>
+    </div>
   </div>
 
-  <form method="get" class="form-inline mb-4">
-    <div class="input-group w-100" style="max-width: 400px;">
-      <input type="text" name="search" value="{{ search }}" class="form-control" placeholder="Search by title...">
-      <div class="input-group-append">
-        <button type="submit" class="btn btn-secondary font-weight-bold"><i class="fas fa-search mr-1"></i> Search</button>
-      </div>
+  <!-- Search & Filter Controls -->
+  <div class="card shadow-smooth border-0 mb-4">
+    <div class="card-body p-3">
+      <form method="get" class="row align-items-center">
+        <div class="col-md-6 col-lg-5 mb-2 mb-md-0">
+          <div class="input-group">
+            <div class="input-group-prepend">
+              <span class="input-group-text bg-light border-right-0 text-muted"><i class="fas fa-search"></i></span>
+            </div>
+            <input type="text" name="search" value="{{ search }}" class="form-control border-left-0" placeholder="Search movie by title...">
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-7 d-flex justify-content-md-end align-items-center gap-2">
+          {% if search %}
+            <a href="{% url 'admin_manage_movies' %}" class="btn btn-sm btn-light border font-weight-bold mr-2">
+              <i class="fas fa-times mr-1 text-danger"></i> Clear Search
+            </a>
+          {% endif %}
+          <button type="submit" class="btn btn-sm btn-secondary font-weight-bold px-3">
+            Search Movies
+          </button>
+        </div>
+      </form>
     </div>
-  </form>
+  </div>
 
-  <div class="card shadow-sm border-0">
+  <!-- Movies Table Container -->
+  <div class="card shadow-smooth border-0">
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover align-middle mb-0">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Posters &amp; Gallery</th>
+              <th style="width: 70px;">Poster</th>
+              <th>Movie Details</th>
               <th>Status</th>
               <th>Duration</th>
               <th>Certification</th>
               <th>Rating</th>
               <th>Release Date</th>
-              <th class="text-right">Actions</th>
+              <th class="text-right" style="min-width: 260px;">Management Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for m in movies %}
               <tr>
-                <td>
-                  <strong><a href="{% url 'movie_detail' m.id %}" class="text-dark">{{ m.title }}</a></strong>
-                </td>
-                <td>
-                  <div class="d-flex align-items-center">
-                    {% if m.poster_url %}
-                      <img src="{{ m.poster_url }}" class="rounded shadow-sm mr-2" style="width: 34px; height: 48px; object-fit: cover;">
-                    {% else %}
-                      <div class="bg-light border text-muted rounded mr-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 48px; font-size: 10px;">No poster</div>
-                    {% endif %}
-                    <div>
-                      <span class="badge badge-info" style="font-size: 11px;"><i class="fas fa-images mr-1"></i>{{ m.images.count }} Posters</span>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  {% if m.status == 'now_showing' %}
-                    <span class="badge badge-success px-2 py-1">Now Showing</span>
-                  {% elif m.status == 'upcoming' %}
-                    <span class="badge badge-warning text-dark px-2 py-1">Upcoming</span>
+                <!-- Poster Thumbnail -->
+                <td class="text-center align-middle">
+                  {% if m.poster_url %}
+                    <img src="{{ m.poster_url }}" class="rounded shadow-sm" style="width: 44px; height: 60px; object-fit: cover;">
                   {% else %}
-                    <span class="badge badge-secondary px-2 py-1">Ended</span>
+                    <div class="bg-light border text-muted rounded d-flex align-items-center justify-content-center mx-auto" style="width: 44px; height: 60px; font-size: 9px; line-height: 1.1;">No Poster</div>
                   {% endif %}
                 </td>
-                <td>{{ m.duration_formatted|default:m.duration_minutes }}</td>
-                <td><span class="badge badge-light border">{{ m.age_certification|default:"-" }}</span></td>
-                <td><i class="fas fa-star text-warning mr-1"></i> {{ m.rating }} ({{ m.review_count }})</td>
-                <td>{{ m.release_date|date:"M d, Y"|default:"-" }}</td>
-                <td class="text-right">
-                  <a href="{% url 'admin_movie_gallery' m.id %}" class="btn btn-sm btn-info text-white font-weight-bold mr-1" title="Manage Multi-Poster Gallery">
-                    <i class="fas fa-images mr-1"></i> Multi-Poster Gallery ({{ m.images.count }})
-                  </a>
-                  <a href="{% url 'admin_movie_edit' m.id %}" class="btn btn-sm btn-outline-primary mr-1"><i class="fas fa-edit mr-1"></i> Edit</a>
-                  <a href="{% url 'admin_movie_delete' m.id %}" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash-alt"></i> Delete</a>
+
+                <!-- Movie Title & Taxonomies -->
+                <td>
+                  <div class="font-weight-bold text-dark mb-1" style="font-size: 15px;">
+                    <a href="{% url 'movie_detail' m.id %}" class="text-dark hover-primary">{{ m.title }}</a>
+                  </div>
+                  <div class="d-flex flex-wrap gap-1 align-items-center">
+                    {% for g in m.genres.all|slice:":3" %}
+                      <span class="badge badge-soft-info" style="font-size: 10px;">{{ g.name }}</span>
+                    {% endfor %}
+                    {% for l in m.languages.all|slice:":2" %}
+                      <span class="badge badge-soft-dark" style="font-size: 10px;">{{ l.name }}</span>
+                    {% endfor %}
+                  </div>
+                </td>
+
+                <!-- Status Badge -->
+                <td>
+                  {% if m.status == 'now_showing' %}
+                    <span class="badge badge-soft-success px-2 py-1"><i class="fas fa-play-circle mr-1"></i>Now Showing</span>
+                  {% elif m.status == 'upcoming' %}
+                    <span class="badge badge-soft-warning px-2 py-1"><i class="fas fa-clock mr-1"></i>Upcoming</span>
+                  {% else %}
+                    <span class="badge badge-soft-secondary px-2 py-1"><i class="fas fa-check-circle mr-1"></i>Ended</span>
+                  {% endif %}
+                </td>
+
+                <!-- Duration -->
+                <td>
+                  <span class="font-weight-semibold text-dark small">
+                    {{ m.duration_formatted|default:m.duration_minutes }}
+                  </span>
+                </td>
+
+                <!-- Age Certification -->
+                <td>
+                  {% if m.age_certification %}
+                    <span class="badge badge-soft-dark border">{{ m.age_certification }}</span>
+                  {% else %}
+                    <span class="text-muted small">-</span>
+                  {% endif %}
+                </td>
+
+                <!-- Rating & Reviews -->
+                <td>
+                  <div class="d-flex align-items-center">
+                    <i class="fas fa-star text-warning mr-1" style="font-size: 12px;"></i>
+                    <strong class="small text-dark mr-1">{{ m.rating }}</strong>
+                    <span class="text-muted small">({{ m.review_count }})</span>
+                  </div>
+                </td>
+
+                <!-- Release Date -->
+                <td>
+                  <span class="small text-muted">
+                    {{ m.release_date|date:"M d, Y"|default:"-" }}
+                  </span>
+                </td>
+
+                <!-- Actions Button Group -->
+                <td class="text-right align-middle">
+                  <div class="btn-action-group">
+                    <a href="{% url 'admin_movie_gallery' m.id %}" class="btn btn-xs btn-info text-white font-weight-bold shadow-sm" title="Manage Multi-Poster Gallery Images">
+                      <i class="fas fa-images mr-1"></i> Gallery ({{ m.images.count }})
+                    </a>
+                    <a href="{% url 'admin_movie_edit' m.id %}" class="btn btn-xs btn-primary font-weight-bold shadow-sm" title="Edit Movie Details">
+                      <i class="fas fa-edit mr-1"></i> Edit
+                    </a>
+                    <a href="{% url 'admin_movie_delete' m.id %}" class="btn btn-xs btn-outline-danger shadow-sm" title="Delete Movie">
+                      <i class="fas fa-trash-alt"></i>
+                    </a>
+                  </div>
                 </td>
               </tr>
             {% empty %}
               <tr>
-                <td colspan="7" class="text-center text-muted py-4">No movies found.</td>
+                <td colspan="8" class="text-center text-muted py-5">
+                  <i class="fas fa-film fa-2x mb-2 text-muted d-block"></i>
+                  No movies found matching your search.
+                </td>
               </tr>
             {% endfor %}
           </tbody>

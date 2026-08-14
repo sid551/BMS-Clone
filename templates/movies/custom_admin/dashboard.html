@@ -41,9 +41,30 @@
         <i class="fas fa-bolt mr-1"></i> Bulk Schedules
       </a>
     </div>
+  <!-- Admin Credentials & Security Report Banner -->
+  <div class="alert alert-info border-0 shadow-sm mb-4 d-flex align-items-center justify-content-between flex-wrap" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: #f8fafc;">
+    <div class="d-flex align-items-center my-1">
+      <div class="mr-3 text-warning font-weight-bold" style="font-size: 24px;">
+        <i class="fas fa-user-shield"></i>
+      </div>
+      <div>
+        <h6 class="font-weight-bold mb-1 text-white">
+          <i class="fas fa-lock text-success mr-1"></i> Authorized Admin Credentials Report
+        </h6>
+        <p class="mb-0 small text-white-50">
+          <strong class="text-white">Admin Username:</strong> <code class="bg-dark text-warning px-2 py-1 rounded">admin</code> &nbsp;|&nbsp;
+          <strong class="text-white">Password:</strong> <code class="bg-dark text-warning px-2 py-1 rounded">admin123</code> &nbsp;|&nbsp;
+          <strong class="text-white">Access Level:</strong> <span class="badge badge-success">Superuser Staff</span>
+        </p>
+      </div>
+    </div>
+    <div class="my-1">
+      <span class="badge badge-light px-3 py-2 text-dark font-weight-bold shadow-sm">
+        <i class="fas fa-shield-alt text-primary mr-1"></i> Django Auth Guarded
+      </span>
+    </div>
   </div>
 
-  <!-- Reusable Custom Date Range Filter -->
   {% include 'movies/custom_admin/components/_date_filter.html' %}
 
   <!-- Revenue Breakdown Cards (Daily, Weekly, Monthly, Yearly, Custom Range) -->

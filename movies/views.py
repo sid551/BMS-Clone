@@ -1807,8 +1807,13 @@ def admin_booking_action(request, booking_id):
                 booking.confirm_booking()
                 messages.success(request, f'Booking {booking.booking_reference} confirmed.')
             elif action == 'cancel':
-                booking.cancel_booking()
-                messages.success(request, f'Booking {booking.booking_reference} cancelled and seats restored.')
+                from .cancellation_service import cancel_booking_and_process_refund
+                res = cancel_booking_and_process_refund(
+                    booking=booking,
+                    cancelled_by=request.user,
+                    reason='Admin manual cancellation & refund'
+                )
+                messages.success(request, f'Booking {booking.booking_reference} cancelled, seats restored, and refund of {res["formatted_refund_amount"]} processed.')
         except Exception as e:
             messages.error(request, f'Booking action failed: {str(e)}')
 
@@ -2079,6 +2084,67 @@ def resend_booking_email(request, booking_reference):
         messages.error(request, f"Failed to send ticket email: {err}")
 
     return redirect('profile')
+
+
+@login_required(login_url='/login/')
+def cancel_booking_user_view(request, booking_reference):
+    """
+    POST /movies/booking/<str:booking_reference>/cancel/
+    User-facing endpoint to cancel a confirmed booking and trigger full refund.
+    Releases show seats atomically and records payment refund.
+    """
+    booking = get_object_or_404(Booking, booking_reference=booking_reference)
+
+    if booking.user != request.user and not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({'error': 'Unauthorized to cancel this booking.'}, status=403)
+
+    from .cancellation_service import cancel_booking_and_process_refund
+
+    try:
+        result = cancel_booking_and_process_refund(
+            booking=booking,
+            cancelled_by=request.user,
+            reason='Customer self-service cancellation'
+        )
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
+            return JsonResponse(result)
+        messages.success(request, result['message'])
+    except ValidationError as e:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
+            return JsonResponse({'error': str(e)}, status=400)
+        messages.error(request, f"Cancellation failed: {str(e)}")
+    except Exception as e:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
+            return JsonResponse({'error': f"Unexpected error: {str(e)}"}, status=500)
+        messages.error(request, f"Cancellation error: {str(e)}")
+
+    return redirect('profile')
+
+
+@staff_or_admin_required
+def admin_cancel_and_refund_view(request, booking_id):
+    """
+    POST /movies/manage/bookings/<int:booking_id>/cancel-refund/
+    Admin endpoint to override and cancel any booking, releasing seats & issuing refund.
+    """
+    booking = get_object_or_404(Booking, id=booking_id)
+    from .cancellation_service import cancel_booking_and_process_refund
+
+    try:
+        result = cancel_booking_and_process_refund(
+            booking=booking,
+            cancelled_by=request.user,
+            reason='Admin override cancellation & refund'
+        )
+        messages.success(request, f"Admin Action: {result['message']}")
+    except ValidationError as e:
+        messages.error(request, f"Admin Cancellation Error: {str(e)}")
+    except Exception as e:
+        messages.error(request, f"Unexpected Admin Error: {str(e)}")
+
+    next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or '/movies/manage/bookings/'
+    return redirect(next_url)
+
 
 
 

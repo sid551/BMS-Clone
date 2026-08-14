@@ -67,6 +67,7 @@
                   <th>Status</th>
                   <th>Ticket</th>
                   <th>Email</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -134,6 +135,20 @@
                       <i class="fas fa-paper-plane"></i>
                     </a>
                     {% endif %}
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if b.status == 'confirmed' %}
+                    <form method="POST" action="{% url 'cancel_booking' b.booking_reference %}" onsubmit="return confirm('PVR Cinemas Cancellation Policy:\n• 2+ hours before show: 75% refund\n• 20 mins to 2 hours before show: 50% refund\n• Under 20 mins: Non-refundable\n\nAre you sure you want to cancel booking {{ b.booking_reference }}?');">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel Booking & Refund">
+                        <i class="fas fa-ban mr-1"></i> Cancel &amp; Refund
+                      </button>
+                    </form>
+                    {% elif b.status == 'cancelled' %}
+                    <span class="badge badge-light border text-danger small"><i class="fas fa-undo mr-1"></i> Refunded</span>
+                    {% else %}
+                    <span class="text-muted small">—</span>
                     {% endif %}
                   </td>
                 </tr>
